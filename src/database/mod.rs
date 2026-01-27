@@ -1,8 +1,15 @@
 pub mod sqlite;
 
-use std::any::Any;
-
 use async_trait::async_trait;
+
+/// Database naming details
+#[derive(Debug, Clone)]
+pub struct DatabaseName {
+    /// Primary name (File name)
+    pub primary: String,
+    /// Alternative name (Connection String)
+    pub secondary: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct DatabaseTable {
@@ -25,6 +32,9 @@ pub struct DatabaseColumn {
 
 #[async_trait]
 pub trait Database: Send + Sync + 'static {
+    /// Get the name of the database
+    fn name(&self) -> DatabaseName;
+
     /// List tables within the database
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>>;
 

@@ -1,19 +1,65 @@
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
+    SharedString, StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui_component::{
-    IconName, Sizable, TitleBar, button::Button, label::Label, menu::DropdownMenu,
+    IconName, Sizable, TitleBar, button::Button, label::Label, menu::DropdownMenu, tag::Tag,
+    tooltip::Tooltip,
 };
 
-use crate::ui::actions::{
-    new_database::NewDatabase, new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+use crate::{
+    state::{AppState, DatabaseStore, DatabaseStoreEvent},
+    ui::actions::{
+        new_database::NewDatabase, new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+    },
 };
 
-pub struct AppTitleBar;
+#[derive(Clone)]
+struct DatabaseName {
+    primary: SharedString,
+    secondary: SharedString,
+}
+
+pub struct AppTitleBar {
+    database_name: Option<DatabaseName>,
+}
 
 impl AppTitleBar {
-    pub fn new(_window: &mut Window, cx: &mut App) -> Entity<Self> {
-        cx.new(|_cx| AppTitleBar)
+    pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
+        cx.new(|cx| {
+            let app = cx.global::<AppState>();
+            let database_store = app.database_store.clone();
+
+            cx.subscribe_in(
+                &database_store,
+                window,
+                |this: &mut AppTitleBar, database_store, event, _window, cx| match event {
+                    DatabaseStoreEvent::DatabaseChanged => {
+                        this.set_database_name(database_store, cx);
+                    }
+                },
+            )
+            .detach();
+
+            AppTitleBar {
+                database_name: None,
+            }
+        })
+    }
+
+    fn set_database_name(
+        &mut self,
+        database_store: &Entity<DatabaseStore>,
+        cx: &mut Context<'_, Self>,
+    ) {
+        let database_store = database_store.read(cx);
+        self.database_name = database_store.database.as_ref().map(|db| {
+            let name = db.name();
+            DatabaseName {
+                primary: name.primary.into(),
+                secondary: name.secondary.into(),
+            }
+        });
     }
 }
 
@@ -51,7 +97,18 @@ impl Render for AppTitleBar {
                                 .separator()
                                 .menu("Load Extension", Box::new(NewMemoryDatabase))
                         },
-                    )),
+                    ))
+                    .child(match self.database_name.clone() {
+                        Some(name) => Tag::success()
+                            .small()
+                            .child(div().id("database-name").child(name.primary).tooltip(
+                                move |window, cx| {
+                                    Tooltip::new(name.secondary.clone()).build(window, cx)
+                                },
+                            ))
+                            .text_xs(),
+                        None => Tag::warning().small().child("Not Connected").text_xs(),
+                    }),
             )
             .child(
                 div()

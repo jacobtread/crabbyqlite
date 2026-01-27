@@ -2,15 +2,16 @@ use std::path::Path;
 
 use async_trait::async_trait;
 use sqlx::{
-    Column, Connection, Decode, Row, Sqlite, SqliteConnection, Value, ValueRef,
+    Column, ConnectOptions, Connection, Decode, Row, Sqlite, SqliteConnection, Value, ValueRef,
     prelude::FromRow,
     sqlite::{SqliteConnectOptions, SqliteValueRef},
 };
 use tokio::sync::Mutex;
 
-use crate::database::{Database, DatabaseColumn, DatabaseRow, DatabaseTable};
+use crate::database::{Database, DatabaseColumn, DatabaseName, DatabaseRow, DatabaseTable};
 
 pub struct SqliteDatabase {
+    name: DatabaseName,
     connection: Mutex<SqliteConnection>,
 }
 
@@ -27,6 +28,13 @@ impl SqliteDatabase {
 
         let connection = SqliteConnection::connect_with(&options).await?;
         Ok(Self {
+            name: DatabaseName {
+                primary: path
+                    .file_name()
+                    .map(|value| value.to_string_lossy().to_string())
+                    .unwrap_or_else(|| path.to_string_lossy().to_string()),
+                secondary: options.to_url_lossy().to_string(),
+            },
             connection: Mutex::new(connection),
         })
     }
@@ -36,6 +44,10 @@ impl SqliteDatabase {
         let options = SqliteConnectOptions::new().in_memory(true);
         let connection = SqliteConnection::connect_with(&options).await?;
         Ok(Self {
+            name: DatabaseName {
+                primary: "Memory".to_string(),
+                secondary: options.to_url_lossy().to_string(),
+            },
             connection: Mutex::new(connection),
         })
     }
@@ -43,6 +55,10 @@ impl SqliteDatabase {
 
 #[async_trait]
 impl Database for SqliteDatabase {
+    fn name(&self) -> DatabaseName {
+        self.name.clone()
+    }
+
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>> {
         #[derive(FromRow)]
         struct SqliteTable {
