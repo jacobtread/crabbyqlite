@@ -3,7 +3,7 @@ use gpui_component::input::{Input, InputState};
 
 pub struct DatabaseSqlEditor {
     immutable: bool,
-    input_state: Entity<InputState>,
+    pub input_state: Entity<InputState>,
 }
 
 impl DatabaseSqlEditor {

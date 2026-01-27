@@ -1,5 +1,5 @@
 use crate::ui::database::{
-    database_sql_editor::DatabaseSqlEditor, database_tables_view::DatabaseTablesView,
+    database_sql_executor::DatabaseSqlExecutor, database_tables_view::DatabaseTablesView,
 };
 use gpui::{App, AppContext, Element, Entity, ParentElement, Render, Styled, Window, div};
 use gpui_component::{
@@ -8,12 +8,13 @@ use gpui_component::{
 };
 
 mod database_sql_editor;
+mod database_sql_executor;
 mod database_tables_view;
 
 pub struct DatabaseView {
     active_tab: usize,
     tables_view: Entity<DatabaseTablesView>,
-    sql_editor: Entity<DatabaseSqlEditor>,
+    sql_editor: Entity<DatabaseSqlExecutor>,
 }
 
 impl DatabaseView {
@@ -21,7 +22,7 @@ impl DatabaseView {
         cx.new(|cx| DatabaseView {
             active_tab: 0,
             tables_view: DatabaseTablesView::new(window, cx),
-            sql_editor: DatabaseSqlEditor::new(window, cx, "".into(), false),
+            sql_editor: DatabaseSqlExecutor::new(window, cx),
         })
     }
 }
