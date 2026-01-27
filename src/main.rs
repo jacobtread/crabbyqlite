@@ -1,12 +1,12 @@
 use gpui::*;
-use gpui_component::{Root, StyledExt, TitleBar};
+use gpui_component::{Root, StyledExt, TitleBar, highlighter::LanguageRegistry};
 use gpui_component_assets::Assets;
 
 use crate::{
     state::{AppState, DatabaseStore},
     ui::{
         actions::register_actions, database::DatabaseView, menus::register_app_menus,
-        titlebar::AppTitleBar,
+        sql::create_sql_language_config, titlebar::AppTitleBar,
     },
 };
 
@@ -32,6 +32,8 @@ impl Render for MainApp {
 
 fn main() {
     logging::init_logging();
+
+    LanguageRegistry::singleton().register("sql", &create_sql_language_config());
 
     let app = Application::new().with_assets(Assets);
 

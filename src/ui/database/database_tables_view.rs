@@ -1,14 +1,17 @@
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Task, Window, div,
+    App, AppContext, Context, Element, ElementId, Entity, InteractiveElement, IntoElement,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Task, Window, div, px,
 };
 use gpui_component::{
     spinner::Spinner,
     table::{Column, Table, TableDelegate, TableState},
+    tooltip::Tooltip,
 };
 
 use crate::{
     database::DatabaseTable,
     state::{AppState, DatabaseStore, DatabaseStoreEvent},
+    ui::database::database_sql_editor::DatabaseSqlEditor,
 };
 
 pub struct DatabaseTablesView {
@@ -22,8 +25,13 @@ pub struct DatabaseTablesView {
     table_state: Entity<TableState<DatabaseTableDelegate>>,
 }
 
+struct DatabaseTableRow {
+    name: SharedString,
+    sql: SharedString,
+}
+
 struct DatabaseTableDelegate {
-    data: Vec<DatabaseTable>,
+    data: Vec<DatabaseTableRow>,
     columns: Vec<Column>,
 }
 
@@ -33,7 +41,7 @@ impl DatabaseTableDelegate {
             data: vec![],
             columns: vec![
                 Column::new("name", "Name").width(150.).sortable(),
-                Column::new("schema", "Schema").width(200.),
+                Column::new("schema", "Schema").width(400.),
             ],
         }
     }
@@ -56,16 +64,39 @@ impl TableDelegate for DatabaseTableDelegate {
         &mut self,
         row_ix: usize,
         col_ix: usize,
-        _: &mut Window,
-        _: &mut Context<TableState<Self>>,
+        _window: &mut Window,
+        _cx: &mut Context<TableState<Self>>,
     ) -> impl IntoElement {
         let row = &self.data[row_ix];
         let col = &self.columns[col_ix];
 
+        let sql = row.sql.clone();
+
         match col.key.as_ref() {
-            "name" => row.name.clone(),
-            "schema" => row.sql.clone(),
-            _ => "".to_string(),
+            "name" => row.name.clone().into_any_element(),
+            "schema" => div()
+                .child(sql.clone())
+                .id(ElementId::Name(
+                    format!("schema-tooltip-{row_ix}-{col_ix}").into(),
+                ))
+                .tooltip(move |window, cx| {
+                    let sql = sql.clone();
+
+                    Tooltip::element(move |window, cx| {
+                        let editor = DatabaseSqlEditor::new(window, cx, sql.clone(), true);
+
+                        div()
+                            //
+                            .w(px(400.0))
+                            .h(px(400.0))
+                            .child(editor)
+                            .overflow_hidden()
+                    })
+                    .build(window, cx)
+                })
+                .into_any(),
+
+            _ => div().into_any(),
         }
     }
 }
@@ -106,7 +137,13 @@ impl DatabaseTablesView {
         self.tables = tables.clone();
 
         self.table_state.update(cx, |this, cx| {
-            this.delegate_mut().data = tables;
+            this.delegate_mut().data = tables
+                .into_iter()
+                .map(|table| DatabaseTableRow {
+                    name: table.name.into(),
+                    sql: table.sql.into(),
+                })
+                .collect();
             this.refresh(cx);
         });
     }

@@ -1,15 +1,19 @@
-use crate::ui::database::database_tables_view::DatabaseTablesView;
+use crate::ui::database::{
+    database_sql_editor::DatabaseSqlEditor, database_tables_view::DatabaseTablesView,
+};
 use gpui::{App, AppContext, Element, Entity, ParentElement, Render, Styled, Window, div};
 use gpui_component::{
     StyledExt,
     tab::{Tab, TabBar},
 };
 
+mod database_sql_editor;
 mod database_tables_view;
 
 pub struct DatabaseView {
     active_tab: usize,
     tables_view: Entity<DatabaseTablesView>,
+    sql_editor: Entity<DatabaseSqlEditor>,
 }
 
 impl DatabaseView {
@@ -17,6 +21,7 @@ impl DatabaseView {
         cx.new(|cx| DatabaseView {
             active_tab: 0,
             tables_view: DatabaseTablesView::new(window, cx),
+            sql_editor: DatabaseSqlEditor::new(window, cx, "".into(), false),
         })
     }
 }
@@ -46,7 +51,7 @@ impl Render for DatabaseView {
                 0 => div().size_full().child(self.tables_view.clone()).into_any(),
                 1 => div().child("Browse Data").into_any(),
                 2 => div().child("Edit Pragmas").into_any(),
-                3 => div().child("Execute SQL").into_any(),
+                3 => div().size_full().child(self.sql_editor.clone()).into_any(),
                 _ => div().into_any(),
             })
     }
