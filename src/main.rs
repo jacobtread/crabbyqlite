@@ -14,6 +14,7 @@ mod database;
 mod logging;
 mod state;
 mod ui;
+mod utils;
 
 pub struct MainApp {
     app_title_bar: Entity<AppTitleBar>,
@@ -40,6 +41,8 @@ fn main() {
     app.run(move |cx| {
         // This must be called before using any GPUI Component features.
         gpui_component::init(cx);
+
+        ui::gpui_tokio::init(cx);
 
         let database_store = cx.new(|_| DatabaseStore::default());
 
