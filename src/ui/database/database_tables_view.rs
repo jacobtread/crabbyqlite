@@ -157,6 +157,9 @@ impl DatabaseTablesView {
         // Drop the current task to abort it
         _ = self.tables_task.take();
 
+        // Clear the current data
+        self.update_database_tables(Vec::new(), cx);
+
         let database_store = database_store.read(cx);
         let database = match database_store.database.as_ref() {
             Some(value) => value.clone(),

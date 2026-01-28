@@ -3,14 +3,19 @@ use gpui::{
     SharedString, StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui_component::{
-    IconName, Sizable, TitleBar, button::Button, label::Label, menu::DropdownMenu, tag::Tag,
+    IconName, Sizable, StyledExt, TitleBar,
+    button::{Button, ButtonVariants},
+    label::Label,
+    menu::DropdownMenu,
+    tag::Tag,
     tooltip::Tooltip,
 };
 
 use crate::{
     state::{AppState, DatabaseStore, DatabaseStoreEvent},
     ui::actions::{
-        new_database::NewDatabase, new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+        close_database::CloseDatabase, new_database::NewDatabase,
+        new_memory_database::NewMemoryDatabase, open_file::OpenFile,
     },
 };
 
@@ -101,11 +106,27 @@ impl Render for AppTitleBar {
                     .child(match self.database_name.clone() {
                         Some(name) => Tag::success()
                             .small()
-                            .child(div().id("database-name").child(name.primary).tooltip(
-                                move |window, cx| {
-                                    Tooltip::new(name.secondary.clone()).build(window, cx)
-                                },
-                            ))
+                            .pr_1()
+                            .child(
+                                div()
+                                    .items_center()
+                                    .h_flex()
+                                    .gap_1()
+                                    .id("database-name")
+                                    .child(name.primary)
+                                    .tooltip(move |window, cx| {
+                                        Tooltip::new(name.secondary.clone()).build(window, cx)
+                                    })
+                                    .child(
+                                        Button::new("close-database")
+                                            .success()
+                                            .icon(IconName::Close)
+                                            .on_click(|_event, window, cx| {
+                                                window.dispatch_action(Box::new(CloseDatabase), cx);
+                                            })
+                                            .xsmall(),
+                                    ),
+                            )
                             .text_xs(),
                         None => Tag::warning().small().child("Not Connected").text_xs(),
                     }),
