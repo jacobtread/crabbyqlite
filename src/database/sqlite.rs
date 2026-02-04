@@ -46,7 +46,7 @@ impl SqliteDatabase {
         Ok(Self {
             name: DatabaseName {
                 primary: "Memory".to_string(),
-                secondary: options.to_url_lossy().to_string(),
+                secondary: ":memory:".to_string(),
             },
             connection: Mutex::new(connection),
         })
