@@ -8,8 +8,8 @@ anyhow = "1.0.100"
 async-trait = "0.1.89"
 directories = "6.0.0"
 gpui = "0.2.2"
-gpui-component = "0.5.0"
-gpui-component-assets = "0.5.0"
+gpui-component = "0.5.1"
+gpui-component-assets = "0.5.2"
 tokio = { version = "1.49.0", features = ["full"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
