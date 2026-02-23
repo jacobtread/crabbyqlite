@@ -1212,6 +1212,8 @@ dependencies = [
  "gpui",
  "gpui-component",
  "gpui-component-assets",
+ "rust-embed",
+ "rust-i18n",
  "sqlx",
  "tokio",
  "tracing",

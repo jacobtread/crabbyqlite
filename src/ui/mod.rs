@@ -1,6 +1,9 @@
 pub mod actions;
+pub mod assets;
 pub mod database;
 pub mod gpui_tokio;
+pub mod icons;
 pub mod menus;
 pub mod sql;
 pub mod titlebar;
+pub mod translated;

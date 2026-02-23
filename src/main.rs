@@ -5,8 +5,12 @@ use gpui_component_assets::Assets;
 use crate::{
     state::{AppState, DatabaseStore},
     ui::{
-        actions::register_actions, database::DatabaseView, menus::register_app_menus,
-        sql::create_sql_language_config, titlebar::AppTitleBar,
+        actions::register_actions,
+        assets::{CombinedAssetSource, CustomAssets},
+        database::DatabaseView,
+        menus::register_app_menus,
+        sql::create_sql_language_config,
+        titlebar::AppTitleBar,
     },
 };
 
@@ -15,6 +19,8 @@ mod logging;
 mod state;
 mod ui;
 mod utils;
+
+rust_i18n::i18n!("locales");
 
 pub struct MainApp {
     app_title_bar: Entity<AppTitleBar>,
@@ -36,7 +42,12 @@ fn main() {
 
     LanguageRegistry::singleton().register("sql", &create_sql_language_config());
 
-    let app = Application::new().with_assets(Assets);
+    let app = Application::new()
+        //
+        .with_assets(CombinedAssetSource {
+            assets: Assets,
+            custom_assets: CustomAssets,
+        });
 
     app.run(move |cx| {
         // This must be called before using any GPUI Component features.

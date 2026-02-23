@@ -30,4 +30,8 @@ impl DatabaseStore {
         self.database = database.clone();
         cx.emit(DatabaseStoreEvent::DatabaseChanged);
     }
+
+    pub fn has_database(&self) -> bool {
+        self.database.is_some()
+    }
 }

@@ -1,0 +1,4 @@
+_version: 1
+no-active-database:
+    title: "No active database"
+    description: "No active database connection, connect to a database to use this section."

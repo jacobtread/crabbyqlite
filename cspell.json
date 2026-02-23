@@ -6,6 +6,7 @@
     "xsmall"
   ],
   "userWords": [
-    "\n    \n}"
+    "\n    \n}",
+    "impl IntoElement for Translated"
   ]
 }
