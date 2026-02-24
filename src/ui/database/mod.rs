@@ -14,6 +14,7 @@ use gpui_component::{
     tab::{Tab, TabBar},
 };
 
+mod database_browse_data_view;
 mod database_sql_editor;
 mod database_sql_executor;
 mod database_tables_view;

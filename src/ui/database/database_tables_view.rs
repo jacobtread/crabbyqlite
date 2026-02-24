@@ -1,6 +1,6 @@
 use gpui::{
     App, AppContext, Context, Element, ElementId, Entity, InteractiveElement, IntoElement,
-    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Task, Window, div, px,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use gpui_component::{
     spinner::Spinner,
@@ -10,16 +10,13 @@ use gpui_component::{
 
 use crate::{
     database::DatabaseTable,
-    state::{AppState, DatabaseStore, DatabaseStoreEvent},
+    state::{async_resource::AsyncResource, database_tables::database_tables_resource},
     ui::database::database_sql_editor::DatabaseSqlEditor,
 };
 
 pub struct DatabaseTablesView {
     /// Currently loaded set of database tables
-    tables: Vec<DatabaseTable>,
-
-    /// Background task for loading tables
-    tables_task: Option<Task<()>>,
+    tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
 
     /// State for the database table
     table_state: Entity<TableState<DatabaseTableDelegate>>,
@@ -107,92 +104,34 @@ impl DatabaseTablesView {
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
 
         cx.new(|cx| {
-            let app = cx.global::<AppState>();
-            let database_store = app.database_store.clone();
+            let tables = database_tables_resource(window, cx);
 
-            cx.subscribe_in(
-                &database_store,
-                window,
-                |this: &mut DatabaseTablesView, database_store, event, window, cx| match event {
-                    DatabaseStoreEvent::DatabaseChanged => {
-                        this.load_database_tables(database_store, window, cx);
-                    }
-                },
-            )
+            cx.observe(&tables, |this: &mut DatabaseTablesView, tables, cx| {
+                let tables_data = match tables.read(cx) {
+                    AsyncResource::Loaded(tables) => tables.clone(),
+                    _ => Vec::new(),
+                };
+
+                tracing::debug!("loaded tables data for display");
+
+                this.table_state.update(cx, |this, cx| {
+                    this.delegate_mut().data = tables_data
+                        .into_iter()
+                        .map(|table| DatabaseTableRow {
+                            name: table.name.into(),
+                            sql: table.sql.into(),
+                        })
+                        .collect();
+                    this.refresh(cx);
+                });
+            })
             .detach();
 
             Self {
-                tables: Vec::new(),
+                tables,
                 table_state,
-                tables_task: None,
             }
         })
-    }
-
-    fn update_database_tables(
-        &mut self,
-        tables: Vec<DatabaseTable>,
-        cx: &mut gpui::Context<'_, Self>,
-    ) {
-        self.tables = tables.clone();
-
-        self.table_state.update(cx, |this, cx| {
-            this.delegate_mut().data = tables
-                .into_iter()
-                .map(|table| DatabaseTableRow {
-                    name: table.name.into(),
-                    sql: table.sql.into(),
-                })
-                .collect();
-            this.refresh(cx);
-        });
-    }
-
-    fn load_database_tables(
-        &mut self,
-        database_store: &Entity<DatabaseStore>,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<'_, Self>,
-    ) {
-        // Drop the current task to abort it
-        _ = self.tables_task.take();
-
-        // Clear the current data
-        self.update_database_tables(Vec::new(), cx);
-
-        let database_store = database_store.read(cx);
-        let database = match database_store.database.as_ref() {
-            Some(value) => value.clone(),
-            None => return,
-        };
-
-        let task = cx.spawn_in(window, async move |this, cx| {
-            tracing::debug!("performing database tables load");
-
-            let tables = match database.database_tables().await {
-                Ok(value) => value,
-                Err(error) => {
-                    tracing::error!(?error, "failed to query database tables");
-
-                    // TODO: Display error
-                    _ = this.update(cx, |this, cx| {
-                        this.tables_task = None;
-                        this.update_database_tables(Vec::new(), cx);
-                    });
-
-                    return;
-                }
-            };
-
-            _ = this.update(cx, |this, cx| {
-                this.tables_task = None;
-
-                tracing::debug!(?tables, "loaded database tables");
-                this.update_database_tables(tables, cx);
-            });
-        });
-
-        self.tables_task = Some(task);
     }
 }
 
@@ -200,16 +139,18 @@ impl Render for DatabaseTablesView {
     fn render(
         &mut self,
         _window: &mut gpui::Window,
-        _cx: &mut gpui::Context<Self>,
+        cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        if self.tables_task.is_some() {
-            div()
+        match self.tables.read(cx) {
+            //
+            AsyncResource::Idle | AsyncResource::Loading(_) => div()
                 .size_full()
                 .justify_center()
                 //
-                .child(Spinner::new())
-        } else {
-            div()
+                .child(Spinner::new()),
+
+            //
+            AsyncResource::Loaded(_) => div()
                 .size_full()
                 //
                 .child(
@@ -217,7 +158,10 @@ impl Render for DatabaseTablesView {
                         .stripe(true)
                         .bordered(true)
                         .scrollbar_visible(true, true),
-                )
+                ),
+
+            // TODO: Proper error message display
+            AsyncResource::Error(error) => div().child("TODO: Error message").child(error.clone()),
         }
     }
 }

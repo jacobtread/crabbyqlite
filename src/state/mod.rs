@@ -4,6 +4,9 @@ use gpui::{Context, Entity, EventEmitter, Global};
 
 use crate::database::Database;
 
+pub mod async_resource;
+pub mod database_tables;
+
 pub struct AppState {
     pub database_store: Entity<DatabaseStore>,
 }
