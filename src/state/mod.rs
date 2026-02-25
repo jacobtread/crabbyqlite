@@ -13,7 +13,7 @@ pub struct AppState {
 
 impl Global for AppState {}
 
-type AnySharedDatabase = Arc<dyn Database>;
+pub type AnySharedDatabase = Arc<dyn Database>;
 
 #[derive(Clone)]
 pub enum DatabaseStoreEvent {

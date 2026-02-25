@@ -8,7 +8,9 @@ use sqlx::{
 };
 use tokio::sync::Mutex;
 
-use crate::database::{Database, DatabaseColumn, DatabaseName, DatabaseRow, DatabaseTable};
+use crate::database::{
+    Database, DatabaseColumn, DatabaseName, DatabaseRow, DatabaseTable, DatabaseTableQuery,
+};
 
 pub struct SqliteDatabase {
     name: DatabaseName,
@@ -113,6 +115,33 @@ impl Database for SqliteDatabase {
                 }
             })
             .collect())
+    }
+
+    async fn query_table_rows(
+        &self,
+        query: DatabaseTableQuery,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<DatabaseRow>> {
+        self.query(
+            format!(
+                "SELECT * FROM {table} LIMIT {limit} OFFSET {offset}",
+                table = query.table,
+            )
+            .as_str(),
+        )
+        .await
+    }
+
+    async fn query_table_rows_count(&self, query: DatabaseTableQuery) -> anyhow::Result<i64> {
+        let mut connection = self.connection.lock().await;
+
+        let (count,): (i64,) =
+            sqlx::query_as(format!("SELECT COUNT(*)  FROM {table}", table = query.table).as_str())
+                .fetch_one(&mut *connection)
+                .await?;
+
+        Ok(count)
     }
 }
 

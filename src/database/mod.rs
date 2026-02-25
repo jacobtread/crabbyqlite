@@ -30,6 +30,11 @@ pub struct DatabaseColumn {
     pub value: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct DatabaseTableQuery {
+    pub table: String,
+}
+
 #[async_trait]
 pub trait Database: Send + Sync + 'static {
     /// Get the name of the database
@@ -40,4 +45,15 @@ pub trait Database: Send + Sync + 'static {
 
     /// Perform a query against the database
     async fn query(&self, query: &str) -> anyhow::Result<Vec<DatabaseRow>>;
+
+    /// Query the rows of a specific table
+    async fn query_table_rows(
+        &self,
+        query: DatabaseTableQuery,
+        limit: i64,
+        offset: i64,
+    ) -> anyhow::Result<Vec<DatabaseRow>>;
+
+    /// Query the total number of rows within a table
+    async fn query_table_rows_count(&self, query: DatabaseTableQuery) -> anyhow::Result<i64>;
 }

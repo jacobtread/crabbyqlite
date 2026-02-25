@@ -2,6 +2,7 @@ use crate::{
     state::{AppState, DatabaseStoreEvent},
     ui::{
         database::{
+            database_browse_data_view::DatabaseBrowseDataView,
             database_sql_executor::DatabaseSqlExecutor, database_tables_view::DatabaseTablesView,
         },
         icons::CustomIconName,
@@ -24,6 +25,7 @@ pub struct DatabaseView {
     active_tab: usize,
     tables_view: Entity<DatabaseTablesView>,
     sql_editor: Entity<DatabaseSqlExecutor>,
+    browse_view: Entity<DatabaseBrowseDataView>,
 }
 
 impl DatabaseView {
@@ -49,6 +51,7 @@ impl DatabaseView {
                 active_tab: 0,
                 tables_view: DatabaseTablesView::new(window, cx),
                 sql_editor: DatabaseSqlExecutor::new(window, cx),
+                browse_view: DatabaseBrowseDataView::new(window, cx),
             }
         })
     }
@@ -94,7 +97,7 @@ impl Render for DatabaseView {
             )
             .child(match self.active_tab {
                 0 => div().size_full().child(self.tables_view.clone()).into_any(),
-                1 => div().child("Browse Data").into_any(),
+                1 => div().size_full().child(self.browse_view.clone()).into_any(),
                 2 => div().child("Edit Pragmas").into_any(),
                 3 => div().size_full().child(self.sql_editor.clone()).into_any(),
                 _ => div().into_any(),
