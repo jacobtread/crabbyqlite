@@ -13,9 +13,12 @@ use gpui_component::{
 
 use crate::{
     state::{AppState, DatabaseStore, DatabaseStoreEvent},
-    ui::actions::{
-        close_database::CloseDatabase, new_database::NewDatabase,
-        new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+    ui::{
+        actions::{
+            close_database::CloseDatabase, new_database::NewDatabase,
+            new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+        },
+        translated::ts,
     },
 };
 
@@ -78,31 +81,40 @@ impl Render for AppTitleBar {
                     .gap_1()
                     .child(Button::new("menu").icon(IconName::Menu).small())
                     .child(Label::new("Crabbyqlite").text_xs())
-                    .child(Button::new("file").label("File").xsmall().dropdown_menu(
-                        |menu, _, _| {
-                            menu.menu("New Database", Box::new(NewDatabase))
-                                .menu("New In-Memory Database", Box::new(NewMemoryDatabase))
-                                .separator()
-                                .menu("Open Database", Box::new(OpenFile))
-                                .menu("Open Read-Only Database", Box::new(OpenFile))
-                        },
-                    ))
-                    .child(Button::new("edit").label("Edit").xsmall().dropdown_menu(
-                        |menu, _, _| {
-                            menu.menu("Create Table", Box::new(NewDatabase))
-                                .menu("Modify Table", Box::new(NewMemoryDatabase))
-                                .menu("Delete Table", Box::new(NewMemoryDatabase))
-                                .separator()
-                                .menu("Create Index", Box::new(OpenFile))
-                        },
-                    ))
-                    .child(Button::new("tools").label("Tools").xsmall().dropdown_menu(
-                        |menu, _, _| {
-                            menu.menu("Compact Database", Box::new(NewDatabase))
-                                .separator()
-                                .menu("Load Extension", Box::new(NewMemoryDatabase))
-                        },
-                    ))
+                    .child(
+                        Button::new("file")
+                            .label(ts("file"))
+                            .xsmall()
+                            .dropdown_menu(|menu, _, _| {
+                                menu.menu(ts("new-database"), Box::new(NewDatabase))
+                                    .menu(ts("new-in-memory-database"), Box::new(NewMemoryDatabase))
+                                    .separator()
+                                    .menu(ts("open-database"), Box::new(OpenFile))
+                                    .menu(ts("open-read-only-database"), Box::new(OpenFile))
+                            }),
+                    )
+                    .child(
+                        Button::new("edit")
+                            .label(ts("edit"))
+                            .xsmall()
+                            .dropdown_menu(|menu, _, _| {
+                                menu.menu(ts("create-table"), Box::new(NewDatabase))
+                                    .menu(ts("modify-table"), Box::new(NewMemoryDatabase))
+                                    .menu(ts("delete-table"), Box::new(NewMemoryDatabase))
+                                    .separator()
+                                    .menu(ts("create-index"), Box::new(OpenFile))
+                            }),
+                    )
+                    .child(
+                        Button::new("tools")
+                            .label(ts("tools"))
+                            .xsmall()
+                            .dropdown_menu(|menu, _, _| {
+                                menu.menu(ts("compact-database"), Box::new(NewDatabase))
+                                    .separator()
+                                    .menu(ts("load-extension"), Box::new(NewMemoryDatabase))
+                            }),
+                    )
                     .child(match self.database_name.clone() {
                         Some(name) => Tag::success()
                             .small()
@@ -128,7 +140,7 @@ impl Render for AppTitleBar {
                                     ),
                             )
                             .text_xs(),
-                        None => Tag::warning().small().child("Not Connected").text_xs(),
+                        None => Tag::warning().small().child(ts("not-connected")).text_xs(),
                     }),
             )
             .child(

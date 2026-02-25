@@ -12,7 +12,7 @@ use gpui_component::{
 use crate::{
     database::DatabaseRow,
     state::{AppState, DatabaseStore, DatabaseStoreEvent},
-    ui::database::database_sql_editor::DatabaseSqlEditor,
+    ui::{database::database_sql_editor::DatabaseSqlEditor, translated::ts},
 };
 
 pub struct DatabaseSqlExecutor {
@@ -196,7 +196,7 @@ impl Render for DatabaseSqlExecutor {
             .size_full()
             .child(
                 Button::new("execute")
-                    .child("Execute")
+                    .child(ts("execute"))
                     .small()
                     .on_click(cx.listener(|this, _event, window, cx| {
                         let app_state = cx.global::<AppState>();

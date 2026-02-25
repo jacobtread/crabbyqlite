@@ -11,7 +11,7 @@ use gpui_component::{
 use crate::{
     database::DatabaseTable,
     state::{async_resource::AsyncResource, database_tables::database_tables_resource},
-    ui::database::database_sql_editor::DatabaseSqlEditor,
+    ui::{database::database_sql_editor::DatabaseSqlEditor, translated::ts},
 };
 
 pub struct DatabaseTablesView {
@@ -37,8 +37,8 @@ impl DatabaseTableDelegate {
         Self {
             data: vec![],
             columns: vec![
-                Column::new("name", "Name").width(150.).sortable(),
-                Column::new("schema", "Schema").width(400.),
+                Column::new("name", ts("name")).width(150.).sortable(),
+                Column::new("schema", ts("schema")).width(400.),
             ],
         }
     }
