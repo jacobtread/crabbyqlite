@@ -18,6 +18,7 @@ use gpui_component::{
 mod database_browse_data_view;
 mod database_sql_editor;
 mod database_sql_executor;
+mod database_table_browser;
 mod database_tables_view;
 
 pub struct DatabaseView {

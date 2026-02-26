@@ -4,6 +4,7 @@ pub mod database;
 pub mod gpui_tokio;
 pub mod icons;
 pub mod menus;
+pub mod pagination;
 pub mod sql;
 pub mod titlebar;
 pub mod translated;

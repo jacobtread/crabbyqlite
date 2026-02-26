@@ -29,6 +29,10 @@ pub struct DatabaseStore {
 }
 
 impl DatabaseStore {
+    pub fn database(&self) -> Option<AnySharedDatabase> {
+        self.database.clone()
+    }
+
     pub fn set_database(&mut self, database: Option<Arc<dyn Database>>, cx: &mut Context<Self>) {
         self.database = database.clone();
         cx.emit(DatabaseStoreEvent::DatabaseChanged);

@@ -19,3 +19,6 @@ not-connected: "Not Connected"
 name: "Name"
 schema: "Schema"
 execute: "Execute"
+Pagination:
+    next: "Next"
+    previous: "Previous"
