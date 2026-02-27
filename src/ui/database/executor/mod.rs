@@ -1,26 +1,26 @@
+use crate::{
+    database::DatabaseRow,
+    state::{
+        AppStateExt,
+        async_resource::{AsyncResource, AsyncResourceEntityExt},
+    },
+    ui::{sql_editor::SqlEditor, translated::ts},
+};
+use anyhow::Context;
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, SharedString, Styled,
-    Task, Window, div,
+    App, AppContext, Entity, IntoElement, ParentElement, Render, SharedString, Styled, Window, div,
 };
 use gpui_component::{
     Sizable, StyledExt,
+    alert::Alert,
     button::Button,
     spinner::Spinner,
     table::{Column, Table, TableDelegate, TableState},
 };
 
-use crate::{
-    database::DatabaseRow,
-    state::AppStateExt,
-    ui::{sql_editor::SqlEditor, translated::ts},
-};
-
 pub struct DatabaseSqlExecutor {
-    /// Currently loaded set of results
-    rows: Vec<DatabaseRow>,
-
-    /// Background task for loading results
-    rows_task: Option<Task<()>>,
+    /// Query results
+    results: Entity<AsyncResource<Vec<DatabaseRow>>>,
 
     /// State for the results table
     table_state: Entity<TableState<ResultsTableDelegate>>,
@@ -78,7 +78,7 @@ impl TableDelegate for ResultsTableDelegate {
         row_ix: usize,
         col_ix: usize,
         _window: &mut Window,
-        _cx: &mut Context<TableState<Self>>,
+        _cx: &mut gpui::Context<TableState<Self>>,
     ) -> impl IntoElement {
         let row = &self.data[row_ix];
         let value = row.values.get(col_ix);
@@ -94,28 +94,38 @@ impl DatabaseSqlExecutor {
         let editor = SqlEditor::new(window, cx, "".into(), false);
 
         cx.new(|cx| {
+            let results: Entity<AsyncResource<Vec<DatabaseRow>>> = AsyncResource::new(cx);
             let database = cx.database();
 
+            // Reset the results resource when the database changes
             cx.observe(
                 &database,
                 |this: &mut DatabaseSqlExecutor, _database, cx| {
-                    this.update_result_rows(vec![], cx);
+                    this.results.set_idle(cx);
                 },
             )
             .detach();
 
+            // Observe results changes to update the database table
+            cx.observe(&results, |this: &mut DatabaseSqlExecutor, results, cx| {
+                let rows = match results.read(cx) {
+                    AsyncResource::Loaded(rows) => rows.clone(),
+                    _ => Vec::new(),
+                };
+
+                this.update_result_rows(rows, cx);
+            })
+            .detach();
+
             Self {
-                rows: Vec::new(),
+                results,
                 table_state,
-                rows_task: None,
                 editor,
             }
         })
     }
 
     fn update_result_rows(&mut self, rows: Vec<DatabaseRow>, cx: &mut gpui::Context<'_, Self>) {
-        self.rows = rows.clone();
-
         self.table_state.update(cx, |this, cx| {
             let delegate = this.delegate_mut();
 
@@ -135,47 +145,18 @@ impl DatabaseSqlExecutor {
         });
     }
 
-    fn perform_query(
-        &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<'_, Self>,
-        query: SharedString,
-    ) {
-        // Drop the current task to abort it
-        _ = self.rows_task.take();
-
+    fn perform_query(&mut self, cx: &mut gpui::Context<'_, Self>, query: SharedString) {
         let database = match cx.current_database() {
             Some(value) => value,
             None => return,
         };
 
-        let task = cx.spawn_in(window, async move |this, cx| {
-            tracing::debug!("performing database tables load");
-
-            let rows = match database.query(query.as_ref()).await {
-                Ok(value) => value,
-                Err(error) => {
-                    tracing::error!(?error, "failed to query database tables");
-
-                    // TODO: Display error
-                    _ = this.update(cx, |this, cx| {
-                        this.rows_task = None;
-                        this.update_result_rows(Vec::new(), cx);
-                    });
-
-                    return;
-                }
-            };
-
-            _ = this.update(cx, |this, cx| {
-                this.rows_task = None;
-
-                tracing::debug!(?rows, "loaded database tables");
-                this.update_result_rows(rows, cx);
-            });
+        self.results.load(cx, async move || {
+            database
+                .query(query.as_ref())
+                .await
+                .context("failed to execute query")
         });
-
-        self.rows_task = Some(task);
     }
 }
 
@@ -192,22 +173,21 @@ impl Render for DatabaseSqlExecutor {
                 Button::new("execute")
                     .child(ts("execute"))
                     .small()
-                    .on_click(cx.listener(|this, _event, window, cx| {
+                    .on_click(cx.listener(|this, _event, _window, cx| {
                         let editor = this.editor.read(cx);
                         let query = editor.input_state.read(cx).value();
-
-                        this.perform_query(window, cx, query);
+                        this.perform_query(cx, query);
                     })),
             )
             .child(self.editor.clone())
-            .child(if self.rows_task.is_some() {
-                div()
+            .child(match self.results.read(cx) {
+                AsyncResource::Idle => div().size_full().child("Query results will appear here"),
+                AsyncResource::Loading(_) => div()
                     .size_full()
                     .justify_center()
                     //
-                    .child(Spinner::new())
-            } else {
-                div()
+                    .child(Spinner::new()),
+                AsyncResource::Loaded(_) => div()
                     .size_full()
                     //
                     .child(
@@ -215,7 +195,10 @@ impl Render for DatabaseSqlExecutor {
                             .stripe(true)
                             .bordered(true)
                             .scrollbar_visible(true, true),
-                    )
+                    ),
+                AsyncResource::Error(error) => div()
+                    .p_3()
+                    .child(Alert::error("error-alert", error.clone()).title(ts("error"))),
             })
     }
 }

@@ -3,8 +3,8 @@ use crate::{
     state::{AppStateExt, async_resource::AsyncResource},
     ui::{
         database::{
-            browse::DatabaseBrowseDataView, database_sql_executor::DatabaseSqlExecutor,
-            database_tables_view::DatabaseTablesView,
+            browse::DatabaseBrowseDataView, database_tables_view::DatabaseTablesView,
+            executor::DatabaseSqlExecutor,
         },
         icons::CustomIconName,
         translated::{t, ts},
@@ -18,8 +18,8 @@ use gpui_component::{
 };
 
 mod browse;
-mod database_sql_executor;
 mod database_tables_view;
+mod executor;
 
 pub struct DatabaseView {
     active_tab: usize,
