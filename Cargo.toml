@@ -20,3 +20,6 @@ tree-sitter-sequel = "0.3.11"
 [dependencies.sqlx]
 version = "0.8.6"
 features = [ "runtime-tokio", "sqlite" ]
+
+[dev-dependencies]
+gpui-component = { version = "0.5.1", features = ["inspector"] }
