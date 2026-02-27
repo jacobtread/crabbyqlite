@@ -1,5 +1,5 @@
 use gpui::*;
-use gpui_component::{Root, StyledExt, TitleBar, highlighter::LanguageRegistry};
+use gpui_component::{Root, StyledExt, TitleBar};
 use gpui_component_assets::Assets;
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
         assets::{CombinedAssetSource, CustomAssets},
         database::DatabaseView,
         menus::register_app_menus,
-        sql::create_sql_language_config,
+        sql_editor::init_sql_editor,
         titlebar::AppTitleBar,
     },
 };
@@ -40,7 +40,7 @@ impl Render for MainApp {
 fn main() {
     logging::init_logging();
 
-    LanguageRegistry::singleton().register("sql", &create_sql_language_config());
+    init_sql_editor();
 
     let app = Application::new()
         //

@@ -18,14 +18,13 @@ use gpui_component::{
 };
 
 mod browse;
-mod database_sql_editor;
 mod database_sql_executor;
 mod database_tables_view;
 
 pub struct DatabaseView {
     active_tab: usize,
     tables_view: Entity<DatabaseTablesView>,
-    sql_editor: Entity<DatabaseSqlExecutor>,
+    executor: Entity<DatabaseSqlExecutor>,
     browse_view: Entity<DatabaseBrowseDataView>,
     database: Entity<AsyncResource<AnySharedDatabase>>,
 }
@@ -38,7 +37,7 @@ impl DatabaseView {
             DatabaseView {
                 active_tab: 0,
                 tables_view: DatabaseTablesView::new(window, cx),
-                sql_editor: DatabaseSqlExecutor::new(window, cx),
+                executor: DatabaseSqlExecutor::new(window, cx),
                 browse_view: DatabaseBrowseDataView::new(window, cx),
                 database,
             }
@@ -91,7 +90,7 @@ impl Render for DatabaseView {
                     0 => div().size_full().child(self.tables_view.clone()).into_any(),
                     1 => div().size_full().child(self.browse_view.clone()).into_any(),
                     2 => div().child("Edit Pragmas").into_any(),
-                    3 => div().size_full().child(self.sql_editor.clone()).into_any(),
+                    3 => div().size_full().child(self.executor.clone()).into_any(),
                     _ => div().into_any(),
                 }),
             AsyncResource::Error(error) => div().child("TODO: Error message").child(error.clone()),

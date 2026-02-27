@@ -12,7 +12,7 @@ use gpui_component::{
 use crate::{
     database::DatabaseRow,
     state::AppStateExt,
-    ui::{database::database_sql_editor::DatabaseSqlEditor, translated::ts},
+    ui::{sql_editor::SqlEditor, translated::ts},
 };
 
 pub struct DatabaseSqlExecutor {
@@ -26,7 +26,7 @@ pub struct DatabaseSqlExecutor {
     table_state: Entity<TableState<ResultsTableDelegate>>,
 
     // SQL Editor state
-    editor: Entity<DatabaseSqlEditor>,
+    editor: Entity<SqlEditor>,
 }
 
 struct QueryResultRow {
@@ -91,7 +91,7 @@ impl DatabaseSqlExecutor {
         let table_delegate = ResultsTableDelegate::new();
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
 
-        let editor = DatabaseSqlEditor::new(window, cx, "".into(), false);
+        let editor = SqlEditor::new(window, cx, "".into(), false);
 
         cx.new(|cx| {
             let database = cx.database();

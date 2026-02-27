@@ -12,7 +12,7 @@ use gpui_component::{
 use crate::{
     database::DatabaseTable,
     state::{async_resource::AsyncResource, database_tables::database_tables_resource},
-    ui::{database::database_sql_editor::DatabaseSqlEditor, translated::ts},
+    ui::{sql_editor::SqlEditor, translated::ts},
 };
 
 pub struct DatabaseTablesView {
@@ -81,7 +81,7 @@ impl TableDelegate for DatabaseTableDelegate {
                     let sql = sql.clone();
 
                     Tooltip::element(move |window, cx| {
-                        let editor = DatabaseSqlEditor::new(window, cx, sql.clone(), true);
+                        let editor = SqlEditor::new(window, cx, sql.clone(), true);
 
                         div()
                             //
