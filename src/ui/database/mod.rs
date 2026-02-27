@@ -3,8 +3,8 @@ use crate::{
     state::{AppStateExt, async_resource::AsyncResource},
     ui::{
         database::{
-            database_browse_data_view::DatabaseBrowseDataView,
-            database_sql_executor::DatabaseSqlExecutor, database_tables_view::DatabaseTablesView,
+            browse::DatabaseBrowseDataView, database_sql_executor::DatabaseSqlExecutor,
+            database_tables_view::DatabaseTablesView,
         },
         icons::CustomIconName,
         translated::{t, ts},
@@ -17,10 +17,9 @@ use gpui_component::{
     tab::{Tab, TabBar},
 };
 
-mod database_browse_data_view;
+mod browse;
 mod database_sql_editor;
 mod database_sql_executor;
-mod database_table_browser;
 mod database_tables_view;
 
 pub struct DatabaseView {

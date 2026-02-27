@@ -19,6 +19,7 @@ impl<T: 'static> AsyncResource<T> {
         cx.new(|_| Self::Idle)
     }
 
+    #[allow(unused)]
     pub fn take_value<C: AppContext>(this: &Entity<Self>, cx: &mut C) -> C::Result<Option<T>> {
         this.update(cx, |this, _cx| {
             let mut value = AsyncResource::Idle;
@@ -63,7 +64,7 @@ impl<T: 'static> AsyncResource<T> {
                 _ = this.update(cx, |this, cx| {
                     *this = match result {
                         Ok(value) => AsyncResource::Loaded(value),
-                        Err(error) => AsyncResource::Error(error.to_string().into()),
+                        Err(error) => AsyncResource::Error(format!("{error:?}").to_string().into()),
                     };
                     cx.notify();
                 });

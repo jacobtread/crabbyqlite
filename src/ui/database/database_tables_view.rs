@@ -3,6 +3,7 @@ use gpui::{
     ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 use gpui_component::{
+    alert::Alert,
     spinner::Spinner,
     table::{Column, Table, TableDelegate, TableState},
     tooltip::Tooltip,
@@ -100,8 +101,7 @@ impl TableDelegate for DatabaseTableDelegate {
 
 impl DatabaseTablesView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
-        let table_delegate = DatabaseTableDelegate::new();
-        let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
+        let table_state = cx.new(|cx| TableState::new(DatabaseTableDelegate::new(), window, cx));
 
         cx.new(|cx| {
             let tables = database_tables_resource(cx);
@@ -160,8 +160,10 @@ impl Render for DatabaseTablesView {
                         .scrollbar_visible(true, true),
                 ),
 
-            // TODO: Proper error message display
-            AsyncResource::Error(error) => div().child("TODO: Error message").child(error.clone()),
+            //
+            AsyncResource::Error(error) => div()
+                .p_3()
+                .child(Alert::error("error-alert", error.clone()).title(ts("error"))),
         }
     }
 }
