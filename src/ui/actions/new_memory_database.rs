@@ -1,31 +1,25 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use gpui::{App, actions};
 
-use crate::{database::sqlite::SqliteDatabase, state::AppState};
+use crate::{
+    database::{AnySharedDatabase, sqlite::SqliteDatabase},
+    state::{AppStateExt, async_resource::AsyncResourceEntityExt},
+};
 
 actions!(file, [NewMemoryDatabase]);
 
 pub fn new_memory_database(_: &NewMemoryDatabase, cx: &mut App) {
-    cx.spawn(async move |cx| {
-        let database = match SqliteDatabase::memory().await {
-            Ok(value) => value,
-            Err(error) => {
-                tracing::error!(?error, "failed to connect to database");
-                return;
-            }
-        };
+    let database = cx.database();
+
+    database.load(cx, async move || {
+        let database = SqliteDatabase::memory()
+            .await
+            .context("failed to connect to database")?;
+        let database: AnySharedDatabase = Arc::new(database);
 
         tracing::debug!("loaded database");
-
-        if let Err(error) = cx.update_global(|global: &mut AppState, cx| {
-            let database_store = global.database_store.clone();
-            database_store.update(cx, |this, cx| {
-                this.set_database(Some(Arc::new(database)), cx);
-            })
-        }) {
-            tracing::error!(?error, "failed to update global state")
-        }
-    })
-    .detach();
+        Ok(database)
+    });
 }

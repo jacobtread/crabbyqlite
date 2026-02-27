@@ -1,44 +1,40 @@
-use std::sync::Arc;
+use gpui::{App, Entity, Global};
 
-use gpui::{Context, Entity, EventEmitter, Global};
-
-use crate::database::Database;
+use crate::{database::AnySharedDatabase, state::async_resource::AsyncResource};
 
 pub mod async_resource;
 pub mod database_tables;
 
 pub struct AppState {
-    pub database_store: Entity<DatabaseStore>,
+    pub database: Entity<AsyncResource<AnySharedDatabase>>,
 }
 
 impl Global for AppState {}
 
-pub type AnySharedDatabase = Arc<dyn Database>;
-
-#[derive(Clone)]
-pub enum DatabaseStoreEvent {
-    /// Event emitted when the current database is changed
-    DatabaseChanged,
+impl AppState {
+    pub fn new(cx: &mut App) -> Self {
+        Self {
+            database: AsyncResource::new(cx),
+        }
+    }
 }
 
-impl EventEmitter<DatabaseStoreEvent> for DatabaseStore {}
+pub trait AppStateExt {
+    fn database(&self) -> Entity<AsyncResource<AnySharedDatabase>>;
 
-#[derive(Default)]
-pub struct DatabaseStore {
-    pub database: Option<AnySharedDatabase>,
+    fn current_database(&self) -> Option<AnySharedDatabase>;
 }
 
-impl DatabaseStore {
-    pub fn database(&self) -> Option<AnySharedDatabase> {
-        self.database.clone()
+impl AppStateExt for App {
+    fn database(&self) -> Entity<AsyncResource<AnySharedDatabase>> {
+        let app_state = self.global::<AppState>();
+        app_state.database.clone()
     }
 
-    pub fn set_database(&mut self, database: Option<Arc<dyn Database>>, cx: &mut Context<Self>) {
-        self.database = database.clone();
-        cx.emit(DatabaseStoreEvent::DatabaseChanged);
-    }
-
-    pub fn has_database(&self) -> bool {
-        self.database.is_some()
+    fn current_database(&self) -> Option<AnySharedDatabase> {
+        match self.database().read(self) {
+            AsyncResource::Loaded(value) => Some(value.clone()),
+            _ => None,
+        }
     }
 }

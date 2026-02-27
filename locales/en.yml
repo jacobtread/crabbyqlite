@@ -22,3 +22,4 @@ execute: "Execute"
 Pagination:
     next: "Next"
     previous: "Previous"
+loading-database: "Loading database..."

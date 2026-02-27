@@ -1,9 +1,13 @@
+use anyhow::Context;
 use gpui::{App, actions};
 use std::{path::PathBuf, sync::Arc};
 use tokio::fs::File;
 
+use crate::database::AnySharedDatabase;
+use crate::database::sqlite::SqliteDatabase;
+use crate::state::AppStateExt;
+use crate::state::async_resource::AsyncResourceEntityExt;
 use crate::ui::gpui_tokio::Tokio;
-use crate::{database::sqlite::SqliteDatabase, state::AppState};
 
 actions!(file, [NewDatabase]);
 
@@ -41,36 +45,24 @@ pub fn new_database(_: &NewDatabase, cx: &mut App) {
         Ok(Some(path))
     });
 
-    cx.spawn(async move |cx| {
+    let database = cx.database();
+
+    database.maybe_load(cx, async move || {
         let path = match path.await {
             Ok(Some(value)) => value,
 
-            Ok(None) => return,
+            Ok(None) => return Ok(None),
 
-            Err(error) => {
-                tracing::error!(?error, "failed to run task");
-                return;
-            }
+            Err(error) => return Err(error.context("failed to run task")),
         };
 
-        let database = match SqliteDatabase::from_path(&path).await {
-            Ok(value) => value,
-            Err(error) => {
-                tracing::error!(?error, "failed to connect to database");
-                return;
-            }
-        };
+        let database = SqliteDatabase::from_path(&path)
+            .await
+            .context("failed to connect to database")?;
+        let database: AnySharedDatabase = Arc::new(database);
 
         tracing::debug!("loaded database");
 
-        if let Err(error) = cx.update_global(|global: &mut AppState, cx| {
-            let database_store = global.database_store.clone();
-            database_store.update(cx, |this, cx| {
-                this.set_database(Some(Arc::new(database)), cx);
-            })
-        }) {
-            tracing::error!(?error, "failed to update global state")
-        }
-    })
-    .detach();
+        Ok(Some(database))
+    });
 }

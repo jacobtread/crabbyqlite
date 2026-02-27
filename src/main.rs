@@ -3,7 +3,7 @@ use gpui_component::{Root, StyledExt, TitleBar, highlighter::LanguageRegistry};
 use gpui_component_assets::Assets;
 
 use crate::{
-    state::{AppState, DatabaseStore},
+    state::AppState,
     ui::{
         actions::register_actions,
         assets::{CombinedAssetSource, CustomAssets},
@@ -55,9 +55,8 @@ fn main() {
 
         ui::gpui_tokio::init(cx);
 
-        let database_store = cx.new(|_| DatabaseStore::default());
-
-        cx.set_global(AppState { database_store });
+        let app_state = AppState::new(cx);
+        cx.set_global(app_state);
 
         // Bring the menu bar to the foreground (so you can see the menu bar)
         cx.activate(true);

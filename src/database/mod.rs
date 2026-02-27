@@ -1,5 +1,7 @@
 pub mod sqlite;
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 /// Database naming details
@@ -34,6 +36,8 @@ pub struct DatabaseColumn {
 pub struct DatabaseTableQuery {
     pub table: String,
 }
+
+pub type AnySharedDatabase = Arc<dyn Database>;
 
 #[async_trait]
 pub trait Database: Send + Sync + 'static {

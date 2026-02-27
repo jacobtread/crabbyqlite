@@ -1,4 +1,8 @@
-use crate::{database::sqlite::SqliteDatabase, state::AppState};
+use crate::{
+    database::{AnySharedDatabase, sqlite::SqliteDatabase},
+    state::{AppStateExt, async_resource::AsyncResourceEntityExt},
+};
+use anyhow::Context;
 use gpui::{App, PathPromptOptions, actions};
 use std::sync::Arc;
 
@@ -12,46 +16,34 @@ pub fn open_file(_: &OpenFile, cx: &mut App) {
         prompt: Some("SQLite database files (*.db, *.sqlite, *.sqlite3, *.db3)".into()),
     });
 
-    cx.spawn(async |cx| {
+    let database = cx.database();
+
+    database.maybe_load(cx, async move || {
         let paths = match prompt_recv.await {
             Ok(Ok(Some(value))) => value,
 
             // Error occurred
-            Ok(Err(error)) => {
-                tracing::error!(?error, "failed to pick file");
-                return;
-            }
+            Ok(Err(error)) => return Err(error.context("failed to pick file")),
 
             // Cancelled picking the file or picked nothing
-            Err(_) | Ok(Ok(None)) => return,
+            Err(_) | Ok(Ok(None)) => return Ok(None),
         };
 
         let path = match paths.first() {
             Some(value) => value,
             // Picked nothing
-            None => return,
+            None => return Ok(None),
         };
 
         tracing::debug!(?path, "picked file for opening");
 
-        let database = match SqliteDatabase::from_path(path).await {
-            Ok(value) => value,
-            Err(error) => {
-                tracing::error!(?error, "failed to connect to database");
-                return;
-            }
-        };
+        let database = SqliteDatabase::from_path(path)
+            .await
+            .context("failed to connect to database")?;
+        let database: AnySharedDatabase = Arc::new(database);
 
         tracing::debug!("loaded database");
 
-        if let Err(error) = cx.update_global(|global: &mut AppState, cx| {
-            let database_store = global.database_store.clone();
-            database_store.update(cx, |this, cx| {
-                this.set_database(Some(Arc::new(database)), cx);
-            })
-        }) {
-            tracing::error!(?error, "failed to update global state")
-        }
-    })
-    .detach();
+        Ok(Some(database))
+    });
 }

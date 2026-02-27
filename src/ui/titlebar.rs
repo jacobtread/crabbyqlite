@@ -12,7 +12,8 @@ use gpui_component::{
 };
 
 use crate::{
-    state::{AppState, DatabaseStore, DatabaseStoreEvent},
+    database::AnySharedDatabase,
+    state::{AppStateExt, async_resource::AsyncResource},
     ui::{
         actions::{
             close_database::CloseDatabase, new_database::NewDatabase,
@@ -33,20 +34,13 @@ pub struct AppTitleBar {
 }
 
 impl AppTitleBar {
-    pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
+    pub fn new(_window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
-            let app = cx.global::<AppState>();
-            let database_store = app.database_store.clone();
+            let database = cx.database();
 
-            cx.subscribe_in(
-                &database_store,
-                window,
-                |this: &mut AppTitleBar, database_store, event, _window, cx| match event {
-                    DatabaseStoreEvent::DatabaseChanged => {
-                        this.set_database_name(database_store, cx);
-                    }
-                },
-            )
+            cx.observe(&database, |this: &mut AppTitleBar, database, cx| {
+                this.set_database_name(&database, cx);
+            })
             .detach();
 
             AppTitleBar {
@@ -57,16 +51,21 @@ impl AppTitleBar {
 
     fn set_database_name(
         &mut self,
-        database_store: &Entity<DatabaseStore>,
+        database_store: &Entity<AsyncResource<AnySharedDatabase>>,
         cx: &mut Context<'_, Self>,
     ) {
-        let database_store = database_store.read(cx);
-        self.database_name = database_store.database.as_ref().map(|db| {
-            let name = db.name();
-            DatabaseName {
-                primary: name.primary.into(),
-                secondary: name.secondary.into(),
+        let database = match database_store.read(cx) {
+            AsyncResource::Loaded(value) => value,
+            _ => {
+                self.database_name = None;
+                return;
             }
+        };
+
+        let name = database.name();
+        self.database_name = Some(DatabaseName {
+            primary: name.primary.into(),
+            secondary: name.secondary.into(),
         });
     }
 }

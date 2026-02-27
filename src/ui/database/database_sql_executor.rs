@@ -11,7 +11,7 @@ use gpui_component::{
 
 use crate::{
     database::DatabaseRow,
-    state::{AppState, DatabaseStore, DatabaseStoreEvent},
+    state::AppStateExt,
     ui::{database::database_sql_editor::DatabaseSqlEditor, translated::ts},
 };
 
@@ -94,16 +94,12 @@ impl DatabaseSqlExecutor {
         let editor = DatabaseSqlEditor::new(window, cx, "".into(), false);
 
         cx.new(|cx| {
-            let app = cx.global::<AppState>();
-            let database_store = app.database_store.clone();
+            let database = cx.database();
 
-            cx.subscribe_in(
-                &database_store,
-                window,
-                |this: &mut DatabaseSqlExecutor, _database_store, event, _window, cx| match event {
-                    DatabaseStoreEvent::DatabaseChanged => {
-                        this.update_result_rows(vec![], cx);
-                    }
+            cx.observe(
+                &database,
+                |this: &mut DatabaseSqlExecutor, _database, cx| {
+                    this.update_result_rows(vec![], cx);
                 },
             )
             .detach();
@@ -141,7 +137,6 @@ impl DatabaseSqlExecutor {
 
     fn perform_query(
         &mut self,
-        database_store: &Entity<DatabaseStore>,
         window: &mut gpui::Window,
         cx: &mut gpui::Context<'_, Self>,
         query: SharedString,
@@ -149,9 +144,8 @@ impl DatabaseSqlExecutor {
         // Drop the current task to abort it
         _ = self.rows_task.take();
 
-        let database_store = database_store.read(cx);
-        let database = match database_store.database.as_ref() {
-            Some(value) => value.clone(),
+        let database = match cx.current_database() {
+            Some(value) => value,
             None => return,
         };
 
@@ -199,12 +193,10 @@ impl Render for DatabaseSqlExecutor {
                     .child(ts("execute"))
                     .small()
                     .on_click(cx.listener(|this, _event, window, cx| {
-                        let app_state = cx.global::<AppState>();
-                        let database_store = app_state.database_store.clone();
                         let editor = this.editor.read(cx);
                         let query = editor.input_state.read(cx).value();
 
-                        this.perform_query(&database_store, window, cx, query);
+                        this.perform_query(window, cx, query);
                     })),
             )
             .child(self.editor.clone())

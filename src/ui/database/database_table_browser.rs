@@ -9,8 +9,8 @@ use gpui_component::{
 };
 
 use crate::{
-    database::{DatabaseRow, DatabaseTableQuery},
-    state::{AnySharedDatabase, AppState, DatabaseStore},
+    database::{AnySharedDatabase, DatabaseRow, DatabaseTableQuery},
+    state::AppStateExt,
     ui::pagination::Pagination,
 };
 
@@ -26,9 +26,6 @@ pub struct DatabaseTableBrowser {
 
     /// State for the table data loading
     load_state: TableLoadState,
-
-    /// Access to the global database store entity
-    database_store: Entity<DatabaseStore>,
 }
 
 enum TableLoadState {
@@ -122,8 +119,6 @@ impl TableDelegate for BrowseTableDelegate {
 impl DatabaseTableBrowser {
     pub fn new(table: String, window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
-            let app = cx.global::<AppState>();
-            let database_store = app.database_store.clone();
             let table_delegate = BrowseTableDelegate::default();
             let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
             let pagination = TablePaginationData::default();
@@ -133,7 +128,6 @@ impl DatabaseTableBrowser {
                 pagination,
                 table_state,
                 load_state: TableLoadState::Idle,
-                database_store,
             };
 
             this.load_table_page(window, cx);
@@ -170,8 +164,7 @@ impl DatabaseTableBrowser {
 
     /// Load the current table
     fn load_table_page(&mut self, window: &mut Window, cx: &mut Context<'_, Self>) {
-        let database_store = self.database_store.read(cx);
-        let database = match database_store.database() {
+        let database = match cx.current_database() {
             Some(value) => value,
             None => {
                 self.pagination.count = None;

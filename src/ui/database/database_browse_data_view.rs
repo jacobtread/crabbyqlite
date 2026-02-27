@@ -25,7 +25,7 @@ pub struct DatabaseBrowseDataView {
 impl DatabaseBrowseDataView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
-            let tables = database_tables_resource(window, cx);
+            let tables = database_tables_resource(cx);
 
             cx.observe_in(
                 &tables,

@@ -104,7 +104,7 @@ impl DatabaseTablesView {
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
 
         cx.new(|cx| {
-            let tables = database_tables_resource(window, cx);
+            let tables = database_tables_resource(cx);
 
             cx.observe(&tables, |this: &mut DatabaseTablesView, tables, cx| {
                 let tables_data = match tables.read(cx) {
