@@ -14,6 +14,7 @@ use gpui_component::{
     Sizable, StyledExt,
     alert::Alert,
     button::Button,
+    resizable::v_resizable,
     spinner::Spinner,
     table::{Column, Table, TableDelegate, TableState},
 };
@@ -166,39 +167,54 @@ impl Render for DatabaseSqlExecutor {
         _window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        div()
-            .v_flex()
-            .size_full()
-            .child(
-                Button::new("execute")
-                    .child(ts("execute"))
-                    .small()
-                    .on_click(cx.listener(|this, _event, _window, cx| {
-                        let editor = this.editor.read(cx);
-                        let query = editor.input_state.read(cx).value();
-                        this.perform_query(cx, query);
-                    })),
-            )
-            .child(self.editor.clone())
-            .child(match self.results.read(cx) {
-                AsyncResource::Idle => div().size_full().child("Query results will appear here"),
-                AsyncResource::Loading(_) => div()
-                    .size_full()
-                    .justify_center()
-                    //
-                    .child(Spinner::new()),
-                AsyncResource::Loaded(_) => div()
-                    .size_full()
-                    //
-                    .child(
-                        Table::new(&self.table_state)
-                            .stripe(true)
-                            .bordered(true)
-                            .scrollbar_visible(true, true),
-                    ),
-                AsyncResource::Error(error) => div()
-                    .p_3()
-                    .child(Alert::error("error-alert", error.clone()).title(ts("error"))),
-            })
+        div().size_full().child(
+            v_resizable("executor-resizable")
+                .child(
+                    div()
+                        .v_flex()
+                        .w_full()
+                        .child(
+                            div().h_flex().child(
+                                Button::new("execute")
+                                    .child(ts("execute"))
+                                    .small()
+                                    .on_click(cx.listener(|this, _event, _window, cx| {
+                                        let editor = this.editor.read(cx);
+                                        let query = editor.input_state.read(cx).value();
+                                        this.perform_query(cx, query);
+                                    })),
+                            ),
+                        )
+                        .child(self.editor.clone())
+                        .into_any_element(),
+                )
+                .child(
+                    match self.results.read(cx) {
+                        AsyncResource::Idle => div()
+                            .size_full()
+                            .p_3()
+                            .text_sm()
+                            .child("Query results will appear here"),
+                        AsyncResource::Loading(_) => div()
+                            .size_full()
+                            .justify_center()
+                            //
+                            .child(Spinner::new()),
+                        AsyncResource::Loaded(_) => div()
+                            .size_full()
+                            //
+                            .child(
+                                Table::new(&self.table_state)
+                                    .stripe(true)
+                                    .bordered(true)
+                                    .scrollbar_visible(true, true),
+                            ),
+                        AsyncResource::Error(error) => div()
+                            .p_3()
+                            .child(Alert::error("error-alert", error.clone()).title(ts("error"))),
+                    }
+                    .into_any_element(),
+                ),
+        )
     }
 }
