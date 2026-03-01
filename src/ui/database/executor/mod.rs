@@ -18,6 +18,7 @@ use gpui_component::{
     spinner::Spinner,
     table::{Column, DataTable, TableDelegate, TableState},
 };
+use sqlformat::FormatOptions;
 
 pub struct DatabaseSqlExecutor {
     /// Query results
@@ -176,16 +177,36 @@ impl Render for DatabaseSqlExecutor {
                         .w_full()
                         .h_full()
                         .child(
-                            div().h_flex().child(
-                                Button::new("execute")
-                                    .child(ts("execute"))
-                                    .small()
-                                    .on_click(cx.listener(|this, _event, _window, cx| {
+                            div()
+                                .h_flex()
+                                .child(
+                                    Button::new("execute")
+                                        .child(ts("execute"))
+                                        .small()
+                                        .on_click(cx.listener(|this, _event, _window, cx| {
+                                            let editor = this.editor.read(cx);
+                                            let query = editor.input_state.read(cx).value();
+                                            this.perform_query(cx, query);
+                                        })),
+                                )
+                                .child(Button::new("format").child(ts("format")).small().on_click(
+                                    cx.listener(|this, _event, window, cx| {
                                         let editor = this.editor.read(cx);
-                                        let query = editor.input_state.read(cx).value();
-                                        this.perform_query(cx, query);
-                                    })),
-                            ),
+                                        let input_state = editor.input_state.clone();
+
+                                        let query = input_state.read(cx).value();
+                                        let options = FormatOptions::default();
+                                        let formatted = sqlformat::format(
+                                            &query,
+                                            &sqlformat::QueryParams::None,
+                                            &options,
+                                        );
+
+                                        input_state.update(cx, move |this, cx| {
+                                            this.set_value(formatted, window, cx);
+                                        });
+                                    }),
+                                )),
                         )
                         .child(self.editor.clone())
                         .into_any_element(),

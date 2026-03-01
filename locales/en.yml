@@ -24,3 +24,4 @@ Pagination:
     previous: "Previous"
 loading-database: "Loading database..."
 error: "Error"
+format: "Format"
