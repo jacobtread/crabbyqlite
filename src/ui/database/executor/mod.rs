@@ -16,7 +16,7 @@ use gpui_component::{
     button::Button,
     resizable::v_resizable,
     spinner::Spinner,
-    table::{Column, Table, TableDelegate, TableState},
+    table::{Column, DataTable, TableDelegate, TableState},
 };
 
 pub struct DatabaseSqlExecutor {
@@ -70,8 +70,8 @@ impl TableDelegate for ResultsTableDelegate {
         self.data.len()
     }
 
-    fn column(&self, col_ix: usize, _: &App) -> &Column {
-        &self.columns[col_ix]
+    fn column(&self, col_ix: usize, _: &App) -> Column {
+        self.columns[col_ix].clone()
     }
 
     fn render_td(
@@ -91,8 +91,9 @@ impl DatabaseSqlExecutor {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
         let table_delegate = ResultsTableDelegate::new();
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
+        let database = cx.database();
 
-        let editor = SqlEditor::new(window, cx, "".into(), false);
+        let editor = SqlEditor::new(window, cx, "".into(), false, database);
 
         cx.new(|cx| {
             let results: Entity<AsyncResource<Vec<DatabaseRow>>> = AsyncResource::new(cx);
@@ -173,6 +174,7 @@ impl Render for DatabaseSqlExecutor {
                     div()
                         .v_flex()
                         .w_full()
+                        .h_full()
                         .child(
                             div().h_flex().child(
                                 Button::new("execute")
@@ -204,7 +206,7 @@ impl Render for DatabaseSqlExecutor {
                             .size_full()
                             //
                             .child(
-                                Table::new(&self.table_state)
+                                DataTable::new(&self.table_state)
                                     .stripe(true)
                                     .bordered(true)
                                     .scrollbar_visible(true, true),

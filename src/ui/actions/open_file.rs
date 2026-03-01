@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Context;
 use gpui::{App, PathPromptOptions, actions};
-use std::sync::Arc;
+use std::rc::Rc;
 
 actions!(file, [OpenFile]);
 
@@ -40,7 +40,7 @@ pub fn open_file(_: &OpenFile, cx: &mut App) {
         let database = SqliteDatabase::from_path(path)
             .await
             .context("failed to connect to database")?;
-        let database: AnySharedDatabase = Arc::new(database);
+        let database: AnySharedDatabase = Rc::new(database);
 
         tracing::debug!("loaded database");
 

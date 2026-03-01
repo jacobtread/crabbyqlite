@@ -2,6 +2,11 @@ use gpui::{App, AppContext, Entity, IntoElement, Render, SharedString, Styled, W
 use gpui_component::highlighter::{LanguageConfig, LanguageRegistry};
 use gpui_component::input::{Input, InputState};
 
+use crate::database::AnySharedDatabase;
+use crate::lsp::SqlLsp;
+use crate::lsp::create_sql_lsp;
+use crate::state::async_resource::AsyncResource;
+
 fn create_sql_language_config() -> LanguageConfig {
     LanguageConfig {
         name: "SQL".into(),
@@ -30,17 +35,42 @@ impl SqlEditor {
         cx: &mut App,
         default_value: SharedString,
         immutable: bool,
+        database: Entity<AsyncResource<AnySharedDatabase>>,
     ) -> Entity<Self> {
-        cx.new(|cx| SqlEditor {
-            input_state: cx.new(|cx| {
-                InputState::new(window, cx)
-                    .code_editor("sql")
-                    .multi_line(true)
-                    .soft_wrap(true)
-                    .rows(6)
-                    .default_value(default_value)
-            }),
-            immutable,
+        cx.new(|cx| {
+            cx.observe(&database, move |this: &mut SqlEditor, database, cx| {
+                let lsp = match database.read(cx) {
+                    AsyncResource::Loaded(database) => {
+                        let lsp = match create_sql_lsp(database.clone()) {
+                            Ok(value) => value,
+                            Err(error) => {
+                                tracing::error!(?error, "failed to create lsp");
+                                return;
+                            }
+                        };
+
+                        Some(lsp)
+                    }
+                    _ => None,
+                };
+
+                this.input_state.update(cx, move |this, _cx| {
+                    this.lsp.completion_provider = lsp.map(SqlLsp::into_completion_provider);
+                });
+            })
+            .detach();
+
+            SqlEditor {
+                input_state: cx.new(|cx| {
+                    InputState::new(window, cx)
+                        .code_editor("sql")
+                        .multi_line(true)
+                        .soft_wrap(true)
+                        .rows(6)
+                        .default_value(default_value)
+                }),
+                immutable,
+            }
         })
     }
 }

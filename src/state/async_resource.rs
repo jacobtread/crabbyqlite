@@ -20,7 +20,7 @@ impl<T: 'static> AsyncResource<T> {
     }
 
     #[allow(unused)]
-    pub fn take_value<C: AppContext>(this: &Entity<Self>, cx: &mut C) -> C::Result<Option<T>> {
+    pub fn take_value<C: AppContext>(this: &Entity<Self>, cx: &mut C) -> Option<T> {
         this.update(cx, |this, _cx| {
             let mut value = AsyncResource::Idle;
             swap(&mut value, this);

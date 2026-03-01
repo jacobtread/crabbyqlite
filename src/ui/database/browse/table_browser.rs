@@ -5,7 +5,7 @@ use gpui::{
 use gpui_component::{
     StyledExt,
     spinner::Spinner,
-    table::{Column, Table, TableDelegate, TableState},
+    table::{Column, DataTable, TableDelegate, TableState},
 };
 
 use crate::{
@@ -99,8 +99,8 @@ impl TableDelegate for BrowseTableDelegate {
         self.data.len()
     }
 
-    fn column(&self, col_ix: usize, _: &App) -> &Column {
-        &self.columns[col_ix]
+    fn column(&self, col_ix: usize, _: &App) -> Column {
+        self.columns[col_ix].clone()
     }
 
     fn render_td(
@@ -215,7 +215,7 @@ impl Render for DatabaseTableBrowser {
                 .size_full()
                 .child(
                     div().flex_auto().child(
-                        Table::new(&self.table_state)
+                        DataTable::new(&self.table_state)
                             .stripe(true)
                             .bordered(true)
                             .scrollbar_visible(true, true),

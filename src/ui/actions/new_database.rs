@@ -1,6 +1,7 @@
 use anyhow::Context;
 use gpui::{App, actions};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use std::rc::Rc;
 use tokio::fs::File;
 
 use crate::database::AnySharedDatabase;
@@ -59,7 +60,7 @@ pub fn new_database(_: &NewDatabase, cx: &mut App) {
         let database = SqliteDatabase::from_path(&path)
             .await
             .context("failed to connect to database")?;
-        let database: AnySharedDatabase = Arc::new(database);
+        let database: AnySharedDatabase = Rc::new(database);
 
         tracing::debug!("loaded database");
 

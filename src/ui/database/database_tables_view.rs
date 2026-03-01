@@ -5,13 +5,15 @@ use gpui::{
 use gpui_component::{
     alert::Alert,
     spinner::Spinner,
-    table::{Column, Table, TableDelegate, TableState},
+    table::{Column, DataTable, TableDelegate, TableState},
     tooltip::Tooltip,
 };
 
 use crate::{
     database::DatabaseTable,
-    state::{async_resource::AsyncResource, database_tables::database_tables_resource},
+    state::{
+        AppStateExt, async_resource::AsyncResource, database_tables::database_tables_resource,
+    },
     ui::{sql_editor::SqlEditor, translated::ts},
 };
 
@@ -54,8 +56,8 @@ impl TableDelegate for DatabaseTableDelegate {
         self.data.len()
     }
 
-    fn column(&self, col_ix: usize, _: &App) -> &Column {
-        &self.columns[col_ix]
+    fn column(&self, col_ix: usize, _: &App) -> Column {
+        self.columns[col_ix].clone()
     }
 
     fn render_td(
@@ -81,7 +83,8 @@ impl TableDelegate for DatabaseTableDelegate {
                     let sql = sql.clone();
 
                     Tooltip::element(move |window, cx| {
-                        let editor = SqlEditor::new(window, cx, sql.clone(), true);
+                        let database = cx.database();
+                        let editor = SqlEditor::new(window, cx, sql.clone(), true, database);
 
                         div()
                             //
@@ -154,7 +157,7 @@ impl Render for DatabaseTablesView {
                 .size_full()
                 //
                 .child(
-                    Table::new(&self.table_state)
+                    DataTable::new(&self.table_state)
                         .stripe(true)
                         .bordered(true)
                         .scrollbar_visible(true, true),

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{any::Any, path::Path, rc::Rc};
 
 use async_trait::async_trait;
 use sqlx::{
@@ -6,7 +6,7 @@ use sqlx::{
     prelude::FromRow,
     sqlite::{SqliteConnectOptions, SqliteValueRef},
 };
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 use crate::database::{
     Database, DatabaseColumn, DatabaseName, DatabaseRow, DatabaseTable, DatabaseTableQuery,
@@ -53,10 +53,20 @@ impl SqliteDatabase {
             connection: Mutex::new(connection),
         })
     }
+
+    /// Directly acquire the underlying database connection
+    #[allow(unused)]
+    async fn connection(&self) -> MutexGuard<'_, SqliteConnection> {
+        self.connection.lock().await
+    }
 }
 
 #[async_trait]
 impl Database for SqliteDatabase {
+    fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
+        self
+    }
+
     fn name(&self) -> DatabaseName {
         self.name.clone()
     }

@@ -16,6 +16,7 @@ use crate::{
 
 mod database;
 mod logging;
+mod lsp;
 mod state;
 mod ui;
 mod utils;
@@ -42,7 +43,7 @@ fn main() {
 
     init_sql_editor();
 
-    let app = Application::new()
+    let app = gpui_platform::application()
         //
         .with_assets(CombinedAssetSource {
             assets: Assets,
