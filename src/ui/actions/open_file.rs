@@ -3,12 +3,18 @@ use crate::{
     state::{AppStateExt, async_resource::AsyncResourceEntityExt},
 };
 use anyhow::Context;
-use gpui::{App, PathPromptOptions, actions};
+use gpui::{Action, App, PathPromptOptions};
+use schemars::JsonSchema;
+use serde::Deserialize;
 use std::rc::Rc;
 
-actions!(file, [OpenFile]);
+#[derive(PartialEq, Clone, Default, Debug, Deserialize, JsonSchema, Action)]
+#[action(namespace = file)]
+pub struct OpenFile {
+    pub read_only: bool,
+}
 
-pub fn open_file(_: &OpenFile, cx: &mut App) {
+pub fn open_file(OpenFile { read_only }: &OpenFile, cx: &mut App) {
     let prompt_recv = cx.prompt_for_paths(PathPromptOptions {
         files: true,
         multiple: false,
@@ -17,6 +23,7 @@ pub fn open_file(_: &OpenFile, cx: &mut App) {
     });
 
     let database = cx.database();
+    let read_only = *read_only;
 
     database.maybe_load(cx, async move || {
         let paths = match prompt_recv.await {
@@ -37,7 +44,7 @@ pub fn open_file(_: &OpenFile, cx: &mut App) {
 
         tracing::debug!(?path, "picked file for opening");
 
-        let database = SqliteDatabase::from_path(path)
+        let database = SqliteDatabase::from_path(path, read_only)
             .await
             .context("failed to connect to database")?;
         let database: AnySharedDatabase = Rc::new(database);

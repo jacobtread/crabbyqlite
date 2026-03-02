@@ -1190,6 +1190,8 @@ dependencies = [
  "lsp-types",
  "rust-embed",
  "rust-i18n",
+ "schemars",
+ "serde",
  "sqlformat",
  "sqlx",
  "tokio",

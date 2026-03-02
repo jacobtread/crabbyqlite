@@ -18,7 +18,7 @@ pub struct SqliteDatabase {
 }
 
 impl SqliteDatabase {
-    pub async fn from_path(path: &Path) -> anyhow::Result<Self> {
+    pub async fn from_path(path: &Path, readonly: bool) -> anyhow::Result<Self> {
         if !path.exists() {
             anyhow::bail!(
                 "database path '{path}' is not a file",
@@ -26,9 +26,11 @@ impl SqliteDatabase {
             );
         }
 
-        let options = SqliteConnectOptions::new().filename(path);
-
+        let options = SqliteConnectOptions::new()
+            .filename(path)
+            .read_only(readonly);
         let connection = SqliteConnection::connect_with(&options).await?;
+
         Ok(Self {
             name: DatabaseName {
                 primary: path

@@ -1,6 +1,6 @@
 use gpui::{
-    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, div,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, NoAction, ParentElement,
+    Render, SharedString, StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui_component::{
     IconName, Sizable, StyledExt, TitleBar,
@@ -88,8 +88,14 @@ impl Render for AppTitleBar {
                                 menu.menu(ts("new-database"), Box::new(NewDatabase))
                                     .menu(ts("new-in-memory-database"), Box::new(NewMemoryDatabase))
                                     .separator()
-                                    .menu(ts("open-database"), Box::new(OpenFile))
-                                    .menu(ts("open-read-only-database"), Box::new(OpenFile))
+                                    .menu(
+                                        ts("open-database"),
+                                        Box::new(OpenFile { read_only: false }),
+                                    )
+                                    .menu(
+                                        ts("open-read-only-database"),
+                                        Box::new(OpenFile { read_only: true }),
+                                    )
                             }),
                     )
                     .child(
@@ -97,11 +103,11 @@ impl Render for AppTitleBar {
                             .label(ts("edit"))
                             .xsmall()
                             .dropdown_menu(|menu, _, _| {
-                                menu.menu(ts("create-table"), Box::new(NewDatabase))
-                                    .menu(ts("modify-table"), Box::new(NewMemoryDatabase))
-                                    .menu(ts("delete-table"), Box::new(NewMemoryDatabase))
+                                menu.menu(ts("create-table"), Box::new(NoAction))
+                                    .menu(ts("modify-table"), Box::new(NoAction))
+                                    .menu(ts("delete-table"), Box::new(NoAction))
                                     .separator()
-                                    .menu(ts("create-index"), Box::new(OpenFile))
+                                    .menu(ts("create-index"), Box::new(NoAction))
                             }),
                     )
                     .child(
@@ -109,9 +115,9 @@ impl Render for AppTitleBar {
                             .label(ts("tools"))
                             .xsmall()
                             .dropdown_menu(|menu, _, _| {
-                                menu.menu(ts("compact-database"), Box::new(NewDatabase))
+                                menu.menu(ts("compact-database"), Box::new(NoAction))
                                     .separator()
-                                    .menu(ts("load-extension"), Box::new(NewMemoryDatabase))
+                                    .menu(ts("load-extension"), Box::new(NoAction))
                             }),
                     )
                     .child(match self.database_name.clone() {

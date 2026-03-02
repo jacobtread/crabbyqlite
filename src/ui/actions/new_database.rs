@@ -57,7 +57,7 @@ pub fn new_database(_: &NewDatabase, cx: &mut App) {
             Err(error) => return Err(error.context("failed to run task")),
         };
 
-        let database = SqliteDatabase::from_path(&path)
+        let database = SqliteDatabase::from_path(&path, false)
             .await
             .context("failed to connect to database")?;
         let database: AnySharedDatabase = Rc::new(database);
