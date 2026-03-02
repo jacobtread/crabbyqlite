@@ -3,6 +3,7 @@ use gpui_component::{Root, StyledExt, TitleBar};
 use gpui_component_assets::Assets;
 
 use crate::{
+    keybindings::init_keybindings,
     state::AppState,
     ui::{
         actions::register_actions,
@@ -15,6 +16,7 @@ use crate::{
 };
 
 mod database;
+mod keybindings;
 mod logging;
 mod lsp;
 mod state;
@@ -53,6 +55,8 @@ fn main() {
     app.run(move |cx| {
         // This must be called before using any GPUI Component features.
         gpui_component::init(cx);
+
+        init_keybindings(cx);
 
         ui::gpui_tokio::init(cx);
 
