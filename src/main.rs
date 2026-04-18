@@ -31,12 +31,15 @@ pub struct MainApp {
 }
 
 impl Render for MainApp {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let dialog_layer = Root::render_dialog_layer(window, cx);
+
         div()
             .v_flex()
             .size_full()
             .child(self.app_title_bar.clone())
             .child(div().size_full().child(self.database_view.clone()))
+            .children(dialog_layer)
     }
 }
 

@@ -1,5 +1,8 @@
 use crate::{
-    database::{AnySharedDatabase, sqlite::SqliteDatabase},
+    database::{
+        AnySharedDatabase,
+        sqlite::{SqliteDatabase, SqliteDatabaseOptions},
+    },
     state::{AppStateExt, async_resource::AsyncResourceEntityExt},
 };
 use anyhow::Context;
@@ -23,7 +26,7 @@ pub fn open_file(OpenFile { read_only }: &OpenFile, cx: &mut App) {
     });
 
     let database = cx.database();
-    let read_only = *read_only;
+    let readonly = *read_only;
 
     database.maybe_load(cx, async move || {
         let paths = match prompt_recv.await {
@@ -44,7 +47,12 @@ pub fn open_file(OpenFile { read_only }: &OpenFile, cx: &mut App) {
 
         tracing::debug!(?path, "picked file for opening");
 
-        let database = SqliteDatabase::from_path(path, read_only)
+        let options = SqliteDatabaseOptions {
+            readonly,
+            ..Default::default()
+        };
+
+        let database = SqliteDatabase::from_path(path, options)
             .await
             .context("failed to connect to database")?;
         let database: AnySharedDatabase = Rc::new(database);

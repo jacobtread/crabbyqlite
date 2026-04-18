@@ -17,7 +17,8 @@ use crate::{
     ui::{
         actions::{
             close_database::CloseDatabase, new_database::NewDatabase,
-            new_memory_database::NewMemoryDatabase, open_file::OpenFile,
+            new_memory_database::NewMemoryDatabase, open_encrypted_database::OpenFileEncrypted,
+            open_file::OpenFile,
         },
         translated::ts,
     },
@@ -88,13 +89,18 @@ impl Render for AppTitleBar {
                                 menu.menu(ts("new-database"), Box::new(NewDatabase))
                                     .menu(ts("new-in-memory-database"), Box::new(NewMemoryDatabase))
                                     .separator()
-                                    .menu(
-                                        ts("open-database"),
-                                        Box::new(OpenFile { read_only: false }),
-                                    )
+                                    .menu(ts("open-database"), Box::new(OpenFile::default()))
                                     .menu(
                                         ts("open-read-only-database"),
                                         Box::new(OpenFile { read_only: true }),
+                                    )
+                                    .menu(
+                                        ts("open-encrypted-database"),
+                                        Box::new(OpenFileEncrypted { read_only: false }),
+                                    )
+                                    .menu(
+                                        ts("open-read-only-encrypted-database"),
+                                        Box::new(OpenFileEncrypted { read_only: true }),
                                     )
                             }),
                     )

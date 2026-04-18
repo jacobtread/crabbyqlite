@@ -1,12 +1,15 @@
 _version: 1
 no-active-database:
     title: "No active database"
-    description: "No active database connection, connect to a database to use this section."
+    description: "No active database connection, connect to a database to use this
+        section."
 file: "File"
 new-database: "New Database"
 new-in-memory-database: "New In-Memory Database"
 open-database: "Open Database"
 open-read-only-database: "Open Read-Only Database"
+open-encrypted-database: "Open Encrypted Database"
+open-read-only-encrypted-database: "Open Read-Only Encrypted Database"
 edit: "Edit"
 create-table: "Create Table"
 modify-table: "Modify Table"

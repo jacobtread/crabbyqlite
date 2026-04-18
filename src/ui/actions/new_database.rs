@@ -5,7 +5,7 @@ use std::rc::Rc;
 use tokio::fs::File;
 
 use crate::database::AnySharedDatabase;
-use crate::database::sqlite::SqliteDatabase;
+use crate::database::sqlite::{SqliteDatabase, SqliteDatabaseOptions};
 use crate::state::AppStateExt;
 use crate::state::async_resource::AsyncResourceEntityExt;
 use crate::ui::gpui_tokio::Tokio;
@@ -57,7 +57,7 @@ pub fn new_database(_: &NewDatabase, cx: &mut App) {
             Err(error) => return Err(error.context("failed to run task")),
         };
 
-        let database = SqliteDatabase::from_path(&path, false)
+        let database = SqliteDatabase::from_path(&path, SqliteDatabaseOptions::default())
             .await
             .context("failed to connect to database")?;
         let database: AnySharedDatabase = Rc::new(database);

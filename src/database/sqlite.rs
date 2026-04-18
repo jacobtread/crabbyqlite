@@ -17,8 +17,14 @@ pub struct SqliteDatabase {
     connection: Mutex<SqliteConnection>,
 }
 
+#[derive(Default)]
+pub struct SqliteDatabaseOptions {
+    pub readonly: bool,
+    pub key: Option<String>,
+}
+
 impl SqliteDatabase {
-    pub async fn from_path(path: &Path, readonly: bool) -> anyhow::Result<Self> {
+    pub async fn from_path(path: &Path, db_options: SqliteDatabaseOptions) -> anyhow::Result<Self> {
         if !path.exists() {
             anyhow::bail!(
                 "database path '{path}' is not a file",
@@ -28,8 +34,14 @@ impl SqliteDatabase {
 
         let options = SqliteConnectOptions::new()
             .filename(path)
-            .read_only(readonly);
-        let connection = SqliteConnection::connect_with(&options).await?;
+            .read_only(db_options.readonly);
+        let mut connection = SqliteConnection::connect_with(&options).await?;
+
+        if let Some(key) = db_options.key {
+            sqlx::query(&format!("PRAGMA key = '{key}';"))
+                .execute(&mut connection)
+                .await?;
+        }
 
         Ok(Self {
             name: DatabaseName {

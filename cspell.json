@@ -3,7 +3,8 @@
     "Crabbyqlite",
     "gpui",
     "sqlx",
-    "xsmall"
+    "xsmall",
+    "schemars"
   ],
   "userWords": [
     "\n    \n}",
