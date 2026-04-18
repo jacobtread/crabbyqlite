@@ -14,6 +14,7 @@ use gpui_component::{
     Sizable, StyledExt,
     alert::Alert,
     button::Button,
+    input::InputEvent,
     resizable::v_resizable,
     spinner::Spinner,
     table::{Column, DataTable, TableDelegate, TableState},
@@ -120,6 +121,21 @@ impl DatabaseSqlExecutor {
             })
             .detach();
 
+            // Handle CTRL + Enter to run the query
+            let editor_input_state = editor.read(cx).input_state.clone();
+            cx.subscribe_in(
+                &editor_input_state,
+                window,
+                |view, _state, event, _window, cx| {
+                    if let InputEvent::PressEnter { secondary } = event
+                        && *secondary
+                    {
+                        view.perform_current_query(cx);
+                    }
+                },
+            )
+            .detach();
+
             Self {
                 results,
                 table_state,
@@ -146,6 +162,12 @@ impl DatabaseSqlExecutor {
 
             this.refresh(cx);
         });
+    }
+
+    fn perform_current_query(&mut self, cx: &mut gpui::Context<'_, Self>) {
+        let editor = self.editor.read(cx);
+        let query = editor.input_state.read(cx).value();
+        self.perform_query(cx, query);
     }
 
     fn perform_query(&mut self, cx: &mut gpui::Context<'_, Self>, query: SharedString) {
@@ -184,9 +206,7 @@ impl Render for DatabaseSqlExecutor {
                                         .child(ts("execute"))
                                         .small()
                                         .on_click(cx.listener(|this, _event, _window, cx| {
-                                            let editor = this.editor.read(cx);
-                                            let query = editor.input_state.read(cx).value();
-                                            this.perform_query(cx, query);
+                                            this.perform_current_query(cx);
                                         })),
                                 )
                                 .child(Button::new("format").child(ts("format")).small().on_click(
