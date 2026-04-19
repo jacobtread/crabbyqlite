@@ -10,9 +10,14 @@ directories = "6.0.0"
 # gpui = "0.2.2"
 
 gpui = { git = "https://github.com/zed-industries/zed" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit", "x11", "wayland", "runtime_shaders"] }
-gpui-component = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "5b3c3ebcaf973168d54c6a66e3ccd1fa2d115926" }
-gpui-component-assets = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "5b3c3ebcaf973168d54c6a66e3ccd1fa2d115926" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = [
+  "font-kit",
+  "x11",
+  "wayland",
+  "runtime_shaders",
+] }
+gpui-component = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
+gpui-component-assets = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
 
 lsp-types = "0.97.0"
 rust-embed = "8.11.0"
@@ -28,14 +33,16 @@ serde = "1.0.228"
 
 # Database (With SLQCipher)
 sqlx = { version = "=0.8.6", features = ["sqlite", "runtime-tokio", "chrono"] }
-libsqlite3-sys = { version ="=0.30.1", features = ["bundled-sqlcipher-vendored-openssl"] }
+libsqlite3-sys = { version = "=0.30.1", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 
 [dev-dependencies]
-gpui-component = { version = "0.5.1", features = ["inspector"], git = "https://github.com/longbridge/gpui-component.git", rev = "5b3c3ebcaf973168d54c6a66e3ccd1fa2d115926" }
+gpui-component = { version = "0.5.1", features = [
+  "inspector",
+], git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
 
 
 # Pin GPUI to a specific revision
 [patch."https://github.com/zed-industries/zed"]
-gpui = { git = "https://github.com/jacobtread/zed", rev = "4668aeb7284780cca830ba1173c4d3eb8bd11e2b" }
-gpui_platform = { git = "https://github.com/jacobtread/zed", rev = "4668aeb7284780cca830ba1173c4d3eb8bd11e2b" }
+gpui = { git = "https://github.com/jacobtread/zed", rev = "ec9be5c332f79986b046a2985e003766591ec82f" }
+gpui_platform = { git = "https://github.com/jacobtread/zed", rev = "ec9be5c332f79986b046a2985e003766591ec82f" }

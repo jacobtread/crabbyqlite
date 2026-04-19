@@ -4,6 +4,7 @@ use crate::ui::actions::quit::Quit;
 
 pub fn register_app_menus(cx: &mut App) {
     cx.set_menus(vec![Menu {
+        disabled: false,
         name: "Menu".into(),
         items: vec![
             MenuItem::os_submenu("Services", SystemMenuType::Services),

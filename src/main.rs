@@ -1,5 +1,5 @@
 use gpui::*;
-use gpui_component::{Root, StyledExt, TitleBar};
+use gpui_component::{Root, StyledExt, Theme, ThemeMode, TitleBar};
 use gpui_component_assets::Assets;
 
 use crate::{
@@ -58,6 +58,9 @@ fn main() {
     app.run(move |cx| {
         // This must be called before using any GPUI Component features.
         gpui_component::init(cx);
+
+        // Initialize using dark theme
+        Theme::change(ThemeMode::Dark, None, cx);
 
         init_keybindings(cx);
 

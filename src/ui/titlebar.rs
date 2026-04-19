@@ -3,7 +3,7 @@ use gpui::{
     Render, SharedString, StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui_component::{
-    IconName, Sizable, StyledExt, TitleBar,
+    ActiveTheme, IconName, Sizable, StyledExt, TitleBar,
     button::{Button, ButtonVariants},
     label::Label,
     menu::DropdownMenu,
@@ -72,17 +72,18 @@ impl AppTitleBar {
 }
 
 impl Render for AppTitleBar {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         TitleBar::new()
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap_1()
-                    .child(Button::new("menu").icon(IconName::Menu).small())
+                    .child(Button::new("menu").icon(IconName::Menu).small().ghost())
                     .child(Label::new("Crabbyqlite").text_xs())
                     .child(
                         Button::new("file")
+                            .ghost()
                             .label(ts("file"))
                             .xsmall()
                             .dropdown_menu(|menu, _, _| {
@@ -106,6 +107,7 @@ impl Render for AppTitleBar {
                     )
                     .child(
                         Button::new("edit")
+                            .ghost()
                             .label(ts("edit"))
                             .xsmall()
                             .dropdown_menu(|menu, _, _| {
@@ -118,6 +120,7 @@ impl Render for AppTitleBar {
                     )
                     .child(
                         Button::new("tools")
+                            .ghost()
                             .label(ts("tools"))
                             .xsmall()
                             .dropdown_menu(|menu, _, _| {
@@ -135,6 +138,7 @@ impl Render for AppTitleBar {
                                     .items_center()
                                     .h_flex()
                                     .gap_1()
+                                    .text_color(cx.theme().button_primary_foreground)
                                     .id("database-name")
                                     .child(name.primary)
                                     .tooltip(move |window, cx| {
@@ -147,6 +151,7 @@ impl Render for AppTitleBar {
                                             .on_click(|_event, window, cx| {
                                                 window.dispatch_action(Box::new(CloseDatabase), cx);
                                             })
+                                            .ghost()
                                             .xsmall(),
                                     ),
                             )
@@ -159,7 +164,7 @@ impl Render for AppTitleBar {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child(Button::new("settings").icon(IconName::Settings)),
+                    .child(Button::new("settings").icon(IconName::Settings).ghost()),
             )
     }
 }
