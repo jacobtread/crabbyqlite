@@ -1,11 +1,8 @@
 use std::{any::Any, path::Path, rc::Rc};
 
 use async_trait::async_trait;
-use sqlx::{
-    Column, ConnectOptions, Connection, Decode, Row, Sqlite, SqliteConnection, Value, ValueRef,
-    prelude::FromRow,
-    sqlite::{SqliteConnectOptions, SqliteValueRef},
-};
+use tokio_rusqlite::{Connection, OpenFlags, params, types::ValueRef};
+
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::database::{
@@ -14,7 +11,7 @@ use crate::database::{
 
 pub struct SqliteDatabase {
     name: DatabaseName,
-    connection: Mutex<SqliteConnection>,
+    connection: Mutex<Connection>,
 }
 
 #[derive(Default)]
@@ -32,15 +29,22 @@ impl SqliteDatabase {
             );
         }
 
-        let options = SqliteConnectOptions::new()
-            .filename(path)
-            .read_only(db_options.readonly);
-        let mut connection = SqliteConnection::connect_with(&options).await?;
+        let mut options_text: Vec<String> = Vec::new();
+
+        let mut flags = OpenFlags::default();
+        if db_options.readonly {
+            flags.remove(OpenFlags::SQLITE_OPEN_READ_WRITE);
+            flags.insert(OpenFlags::SQLITE_OPEN_READ_ONLY);
+            options_text.push("readonly".to_string());
+        }
+
+        let connection = Connection::open_with_flags(path, flags).await?;
 
         if let Some(key) = db_options.key {
-            sqlx::query(&format!("PRAGMA key = '{key}';"))
-                .execute(&mut connection)
+            connection
+                .call(move |connection| connection.pragma_update(None, "key", key))
                 .await?;
+            options_text.push("encrypted".to_string());
         }
 
         Ok(Self {
@@ -49,7 +53,7 @@ impl SqliteDatabase {
                     .file_name()
                     .map(|value| value.to_string_lossy().to_string())
                     .unwrap_or_else(|| path.to_string_lossy().to_string()),
-                secondary: options.to_url_lossy().to_string(),
+                secondary: options_text.join(", "),
             },
             connection: Mutex::new(connection),
         })
@@ -57,8 +61,7 @@ impl SqliteDatabase {
 
     #[allow(unused)]
     pub async fn memory() -> anyhow::Result<Self> {
-        let options = SqliteConnectOptions::new().in_memory(true);
-        let connection = SqliteConnection::connect_with(&options).await?;
+        let connection = Connection::open_in_memory().await?;
         Ok(Self {
             name: DatabaseName {
                 primary: "Memory".to_string(),
@@ -70,7 +73,7 @@ impl SqliteDatabase {
 
     /// Directly acquire the underlying database connection
     #[allow(unused)]
-    async fn connection(&self) -> MutexGuard<'_, SqliteConnection> {
+    async fn connection(&self) -> MutexGuard<'_, Connection> {
         self.connection.lock().await
     }
 }
@@ -86,59 +89,81 @@ impl Database for SqliteDatabase {
     }
 
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>> {
-        #[derive(FromRow)]
-        struct SqliteTable {
-            name: String,
-            sql: String,
-        }
+        let connection = self.connection.lock().await;
 
-        let mut connection = self.connection.lock().await;
-
-        let result: Vec<SqliteTable> = sqlx::query_as(
-            r#"
+        let result = connection
+            .call(|connection| {
+                let mut statement = connection.prepare(
+                    r#"
             SELECT "name", "sql"
             FROM sqlite_master
             WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
             ORDER BY "name"
             "#,
-        )
-        .fetch_all(&mut *connection)
-        .await?;
+                )?;
 
-        Ok(result
-            .into_iter()
-            .map(|value| DatabaseTable {
-                name: value.name,
-                sql: value.sql,
+                let results = statement.query_map(params![], |row| {
+                    Ok(DatabaseTable {
+                        name: row.get(0)?,
+                        sql: row.get(1)?,
+                    })
+                })?;
+
+                let mut result: Vec<DatabaseTable> = Vec::new();
+
+                for row_result in results {
+                    result.push(row_result?);
+                }
+
+                Ok::<_, tokio_rusqlite::rusqlite::Error>(result)
             })
-            .collect())
+            .await?;
+
+        Ok(result)
     }
 
     async fn query(&self, query: &str) -> anyhow::Result<Vec<DatabaseRow>> {
-        let mut connection = self.connection.lock().await;
+        let connection = self.connection.lock().await;
+        let query = query.to_string();
 
-        let result = sqlx::query(query).fetch_all(&mut *connection).await?;
+        let result = connection
+            .call(move |connection| {
+                let mut statement = connection.prepare(&query)?;
 
-        Ok(result
-            .into_iter()
-            .map(|row| {
-                let columns = row.columns();
+                // Collect the available column names
+                let column_names: Vec<String> = statement
+                    .column_names()
+                    .into_iter()
+                    .map(|value| value.to_string())
+                    .collect();
 
-                DatabaseRow {
-                    value: columns
-                        .iter()
-                        .map(|column| {
-                            let value = row.try_get_raw(column.ordinal()).unwrap();
+                let results = statement.query_map(params![], move |row| {
+                    let mut columns: Vec<DatabaseColumn> = Vec::with_capacity(column_names.len());
 
-                            DatabaseColumn {
-                                name: column.name().to_string(),
-                                value: value_to_string(value),
-                            }
-                        })
-                        .collect(),
+                    for (i, column_name) in column_names.iter().enumerate() {
+                        let value = row.get_ref(i)?;
+                        let value = value_to_string(value);
+
+                        columns.push(DatabaseColumn {
+                            name: column_name.to_string(),
+                            value,
+                        });
+                    }
+
+                    Ok(DatabaseRow { value: columns })
+                })?;
+
+                let mut result: Vec<DatabaseRow> = Vec::new();
+
+                for row_result in results {
+                    result.push(row_result?);
                 }
+
+                Ok::<_, tokio_rusqlite::rusqlite::Error>(result)
             })
-            .collect())
+            .await?;
+
+        Ok(result)
     }
 
     async fn query_table_rows(
@@ -158,46 +183,30 @@ impl Database for SqliteDatabase {
     }
 
     async fn query_table_rows_count(&self, query: DatabaseTableQuery) -> anyhow::Result<i64> {
-        let mut connection = self.connection.lock().await;
+        let connection = self.connection.lock().await;
+        let sql = format!("SELECT COUNT(*)  FROM {table}", table = query.table);
 
-        let (count,): (i64,) =
-            sqlx::query_as(format!("SELECT COUNT(*)  FROM {table}", table = query.table).as_str())
-                .fetch_one(&mut *connection)
-                .await?;
+        let count: i64 = connection
+            .call(move |connection| connection.query_one(&sql, params![], |row| row.get(0)))
+            .await?;
 
         Ok(count)
     }
 }
 
-fn value_to_string(value: SqliteValueRef<'_>) -> String {
-    if value.is_null() {
-        return "NULL".to_string();
-    }
+fn value_to_string(value: ValueRef<'_>) -> String {
+    match value {
+        ValueRef::Null => "NULL".to_string(),
+        ValueRef::Integer(value) => value.to_string(),
+        ValueRef::Real(value) => value.to_string(),
+        ValueRef::Text(items) => {
+            let value = match std::str::from_utf8(items) {
+                Ok(value) => value,
+                Err(err) => return format!("Failed to decode Text column: {err}"),
+            };
 
-    let value = value.to_owned();
-
-    if let Ok(value) = <String as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return value;
+            format!("{:?}", value)
+        }
+        ValueRef::Blob(items) => format!("{:?}", items),
     }
-
-    if let Ok(value) = <&str as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return value.to_string();
-    }
-    if let Ok(value) = <i64 as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return value.to_string();
-    }
-    if let Ok(value) = <f64 as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return value.to_string();
-    }
-
-    if let Ok(value) = <bool as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return value.to_string();
-    }
-
-    if let Ok(value) = <Vec<u8> as Decode<'_, Sqlite>>::decode(value.as_ref()) {
-        return format!("{:?}", value);
-    }
-
-    // Fallback: type name
-    format!("<unhandled type: {}>", value.type_info())
 }

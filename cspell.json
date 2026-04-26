@@ -5,7 +5,8 @@
     "sqlx",
     "xsmall",
     "schemars",
-    "sqlformat"
+    "sqlformat",
+    "rusqlite"
   ],
   "userWords": [
     "\n    \n}",

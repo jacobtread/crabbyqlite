@@ -16,8 +16,8 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", features = [
   "wayland",
   "runtime_shaders",
 ] }
-gpui-component = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
-gpui-component-assets = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
+gpui-component = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "9e252d8667e18039c4c3a64cde02758d6cfdf47a" }
+gpui-component-assets = { version = "0.5.1", git = "https://github.com/longbridge/gpui-component.git", rev = "9e252d8667e18039c4c3a64cde02758d6cfdf47a" }
 
 lsp-types = "0.97.0"
 rust-embed = "8.11.0"
@@ -32,17 +32,16 @@ schemars = { version = "1.0", features = ["indexmap2"] }
 serde = "1.0.228"
 
 # Database (With SLQCipher)
-sqlx = { version = "=0.8.6", features = ["sqlite", "runtime-tokio", "chrono"] }
-libsqlite3-sys = { version = "=0.30.1", features = ["bundled-sqlcipher-vendored-openssl"] }
+tokio-rusqlite = { version = "0.7.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 
 
 [dev-dependencies]
 gpui-component = { version = "0.5.1", features = [
   "inspector",
-], git = "https://github.com/longbridge/gpui-component.git", rev = "564f9fa83145ac8439989242e203471ac86dad11" }
+], git = "https://github.com/longbridge/gpui-component.git", rev = "9e252d8667e18039c4c3a64cde02758d6cfdf47a" }
 
 
 # Pin GPUI to a specific revision
 [patch."https://github.com/zed-industries/zed"]
-gpui = { git = "https://github.com/jacobtread/zed", rev = "ec9be5c332f79986b046a2985e003766591ec82f" }
-gpui_platform = { git = "https://github.com/jacobtread/zed", rev = "ec9be5c332f79986b046a2985e003766591ec82f" }
+gpui = { git = "https://github.com/jacobtread/zed", rev = "832c17e8192e2e1d472f0751e7cef2af84ded622" }
+gpui_platform = { git = "https://github.com/jacobtread/zed", rev = "832c17e8192e2e1d472f0751e7cef2af84ded622" }
