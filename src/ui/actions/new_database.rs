@@ -8,7 +8,7 @@ use crate::database::AnySharedDatabase;
 use crate::database::sqlite::{SqliteDatabase, SqliteDatabaseOptions};
 use crate::state::AppStateExt;
 use crate::state::async_resource::AsyncResourceEntityExt;
-use crate::ui::gpui_tokio::Tokio;
+use crate::utils::async_utils::resolve_async_callback_cx;
 
 actions!(file, [NewDatabase]);
 
@@ -23,39 +23,35 @@ pub fn new_database(_: &NewDatabase, cx: &mut App) {
 
     let prompt_recv = cx.prompt_for_new_path(&document_dir, Some("database.db"));
 
-    let path = Tokio::spawn_result(cx, async move {
-        let path = match prompt_recv.await {
+    resolve_async_callback_cx(cx, prompt_recv, move |cx, prompt_result| {
+        let path = match prompt_result {
             Ok(Ok(Some(value))) => value,
 
             // Error occurred
-            Ok(Err(error)) => {
-                tracing::error!(?error, "failed to pick file");
-                return Err(error);
+            Ok(Err(_error)) => {
+                //TODO: REPORT ERROR
+                return;
             }
 
             // Cancelled picking the file or picked nothing
-            Err(_) | Ok(Ok(None)) => return Ok(None),
+            Err(_) | Ok(Ok(None)) => return,
         };
 
+        on_database_path_picked(cx, path);
+    });
+}
+
+/// Handle the file `path` of the database being picked
+fn on_database_path_picked(cx: &mut App, path: PathBuf) {
+    let database = cx.database();
+
+    database.maybe_load(cx, async move || {
         if let Err(error) = File::create(&path).await {
             tracing::error!(?error, "failed to create file");
             return Err(error.into());
         }
 
         tracing::debug!(?path, "picked file for opening");
-        Ok(Some(path))
-    });
-
-    let database = cx.database();
-
-    database.maybe_load(cx, async move || {
-        let path = match path.await {
-            Ok(Some(value)) => value,
-
-            Ok(None) => return Ok(None),
-
-            Err(error) => return Err(error.context("failed to run task")),
-        };
 
         let database = SqliteDatabase::from_path(&path, SqliteDatabaseOptions::default())
             .await
