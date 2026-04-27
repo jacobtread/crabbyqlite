@@ -18,6 +18,7 @@ use gpui_component::{
 };
 
 mod browse;
+pub mod database_status_label;
 mod database_tables_view;
 mod executor;
 
