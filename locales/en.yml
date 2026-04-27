@@ -28,3 +28,6 @@ Pagination:
 loading-database: "Loading database..."
 error: "Error"
 format: "Format"
+get-started: "Get started"
+welcome-back-to-crabbyqlite: "Welcome back to Crabbyqlite"
+handy-sqlite-tool: "Handy SQLite tool"

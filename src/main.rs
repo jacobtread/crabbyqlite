@@ -4,7 +4,7 @@ use gpui_component_assets::Assets;
 
 use crate::{
     keybindings::init_keybindings,
-    state::AppState,
+    state::{AppState, AppStateExt, async_resource::AsyncResource},
     ui::{
         actions::register_actions,
         assets::{CombinedAssetSource, CustomAssets},
@@ -12,6 +12,7 @@ use crate::{
         menus::register_app_menus,
         sql_editor::init_sql_editor,
         titlebar::AppTitleBar,
+        welcome::WelcomeView,
     },
 };
 
@@ -33,12 +34,16 @@ pub struct MainApp {
 impl Render for MainApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let dialog_layer = Root::render_dialog_layer(window, cx);
+        let database = cx.database();
 
         div()
             .v_flex()
             .size_full()
             .child(self.app_title_bar.clone())
-            .child(div().size_full().child(self.database_view.clone()))
+            .child(div().size_full().child(match database.read(cx) {
+                AsyncResource::Idle => WelcomeView.into_any_element(),
+                _ => self.database_view.clone().into_any_element(),
+            }))
             .children(dialog_layer)
     }
 }

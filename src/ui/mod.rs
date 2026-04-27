@@ -8,3 +8,4 @@ pub mod pagination;
 pub mod sql_editor;
 pub mod titlebar;
 pub mod translated;
+pub mod welcome;
