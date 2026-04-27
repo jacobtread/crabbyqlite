@@ -1,10 +1,11 @@
 use gpui::{
-    App, AppContext, Context, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    SharedString, Styled, Window, div,
+    App, AppContext, Context, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px, rems,
 };
 use gpui_component::{
     ActiveTheme, IconName, Sizable, StyledExt,
     button::{Button, ButtonVariants},
+    tooltip::Tooltip,
 };
 
 use crate::{
@@ -64,32 +65,44 @@ impl Render for DatabaseStatusLabel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self.database_name.clone() {
             Some(name) => div()
+                .id("database-label")
                 .bg(cx.theme().success)
                 .items_center()
-                .p_1()
-                .pr_2()
+                .p(px(2.0))
+                .px(px(4.0))
                 .h_flex()
                 .gap_1()
                 .rounded_sm()
                 .text_color(cx.theme().button_primary_foreground)
+                .text_size(rems(0.65))
+                .tooltip({
+                    let secondary = name.secondary;
+
+                    move |window, cx| Tooltip::new(secondary.clone()).build(window, cx)
+                })
                 .child(name.primary)
                 .child(
                     Button::new("close-database")
                         .success()
                         .icon(IconName::Close)
-                        .ghost()
+                        .text()
+                        .cursor_pointer()
                         .xsmall()
-                        .on_click(|_event, window, cx| {
+                        .text_color(cx.theme().button_primary_foreground)
+                        .on_mouse_down(MouseButton::Left, |_event, window, cx| {
+                            cx.stop_propagation();
                             window.dispatch_action(Box::new(CloseDatabase), cx);
                         }),
                 ),
 
             None => div()
+                .id("database-label")
                 .bg(cx.theme().warning)
-                .p_1()
+                .p(px(2.0))
+                .px(px(4.0))
                 .rounded_sm()
-                .text_color(cx.theme().warning_foreground)
-                .text_xs()
+                .text_color(cx.theme().button_primary_foreground)
+                .text_size(rems(0.65))
                 .child(ts("not-connected")),
         }
     }
