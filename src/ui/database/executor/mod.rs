@@ -1,5 +1,5 @@
 use crate::{
-    database::DatabaseRow,
+    database::{DatabaseQueryResult, DatabaseRow},
     state::{
         AppStateExt,
         async_resource::{AsyncResource, AsyncResourceEntityExt},
@@ -23,7 +23,7 @@ use sqlformat::FormatOptions;
 
 pub struct DatabaseSqlExecutor {
     /// Query results
-    results: Entity<AsyncResource<Vec<DatabaseRow>>>,
+    results: Entity<AsyncResource<DatabaseQueryResult>>,
 
     /// State for the results table
     table_state: Entity<TableState<ResultsTableDelegate>>,
@@ -32,32 +32,15 @@ pub struct DatabaseSqlExecutor {
     editor: Entity<SqlEditor>,
 }
 
-struct QueryResultRow {
-    values: Vec<SharedString>,
-}
-
 struct ResultsTableDelegate {
-    data: Vec<QueryResultRow>,
+    rows: Vec<DatabaseRow>,
     columns: Vec<Column>,
-}
-
-fn compute_columns(rows: &[DatabaseRow]) -> Vec<Column> {
-    let first_row = match rows.first() {
-        Some(value) => value,
-        None => return Vec::new(),
-    };
-
-    first_row
-        .value
-        .iter()
-        .map(|value| Column::new(value.name.clone(), value.name.clone()))
-        .collect()
 }
 
 impl ResultsTableDelegate {
     fn new() -> Self {
         Self {
-            data: vec![],
+            rows: vec![],
             columns: vec![],
         }
     }
@@ -69,7 +52,7 @@ impl TableDelegate for ResultsTableDelegate {
     }
 
     fn rows_count(&self, _: &App) -> usize {
-        self.data.len()
+        self.rows.len()
     }
 
     fn column(&self, col_ix: usize, _: &App) -> Column {
@@ -83,7 +66,7 @@ impl TableDelegate for ResultsTableDelegate {
         _window: &mut Window,
         _cx: &mut gpui::Context<TableState<Self>>,
     ) -> impl IntoElement {
-        let row = &self.data[row_ix];
+        let row = &self.rows[row_ix];
         let value = row.values.get(col_ix);
         value.cloned().unwrap_or_default()
     }
@@ -98,7 +81,7 @@ impl DatabaseSqlExecutor {
         let editor = SqlEditor::new(window, cx, "".into(), false, database);
 
         cx.new(|cx| {
-            let results: Entity<AsyncResource<Vec<DatabaseRow>>> = AsyncResource::new(cx);
+            let results: Entity<AsyncResource<DatabaseQueryResult>> = AsyncResource::new(cx);
             let database = cx.database();
 
             // Reset the results resource when the database changes
@@ -112,12 +95,12 @@ impl DatabaseSqlExecutor {
 
             // Observe results changes to update the database table
             cx.observe(&results, |this: &mut DatabaseSqlExecutor, results, cx| {
-                let rows = match results.read(cx) {
-                    AsyncResource::Loaded(rows) => rows.clone(),
-                    _ => Vec::new(),
+                let (rows, columns) = match results.read(cx) {
+                    AsyncResource::Loaded(rows) => (rows.rows.clone(), rows.column_names.clone()),
+                    _ => (Vec::new(), Vec::new()),
                 };
 
-                this.update_result_rows(rows, cx);
+                this.update_result_rows(rows, columns, cx);
             })
             .detach();
 
@@ -144,21 +127,21 @@ impl DatabaseSqlExecutor {
         })
     }
 
-    fn update_result_rows(&mut self, rows: Vec<DatabaseRow>, cx: &mut gpui::Context<'_, Self>) {
+    fn update_result_rows(
+        &mut self,
+        rows: Vec<DatabaseRow>,
+        columns: Vec<SharedString>,
+        cx: &mut gpui::Context<'_, Self>,
+    ) {
         self.table_state.update(cx, |this, cx| {
             let delegate = this.delegate_mut();
 
-            delegate.columns = compute_columns(&rows);
-            delegate.data = rows
+            delegate.columns = columns
                 .into_iter()
-                .map(|table| QueryResultRow {
-                    values: table
-                        .value
-                        .into_iter()
-                        .map(|value| value.value.into())
-                        .collect(),
-                })
+                .map(|column| Column::new(column.clone(), column))
                 .collect();
+
+            delegate.rows = rows;
 
             this.refresh(cx);
         });

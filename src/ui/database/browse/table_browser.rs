@@ -9,7 +9,7 @@ use gpui_component::{
 };
 
 use crate::{
-    database::{AnySharedDatabase, DatabaseRow, DatabaseTableQuery},
+    database::{AnySharedDatabase, DatabaseQueryResult, DatabaseRow, DatabaseTableQuery},
     state::AppStateExt,
     ui::pagination::Pagination,
 };
@@ -54,40 +54,10 @@ impl Default for TablePaginationData {
     }
 }
 
-struct BrowseTableRow {
-    values: Vec<SharedString>,
-}
-
-impl From<DatabaseRow> for BrowseTableRow {
-    fn from(row: DatabaseRow) -> Self {
-        BrowseTableRow {
-            values: row
-                .value
-                .into_iter()
-                .map(|column| column.value.into())
-                .collect(),
-        }
-    }
-}
-
 #[derive(Default)]
 struct BrowseTableDelegate {
-    data: Vec<BrowseTableRow>,
+    data: Vec<DatabaseRow>,
     columns: Vec<Column>,
-}
-
-/// Helper to collect the available columns from a collection of database rows
-fn compute_columns(rows: &[DatabaseRow]) -> Vec<Column> {
-    let first_row = match rows.first() {
-        Some(value) => value,
-        None => return Vec::new(),
-    };
-
-    first_row
-        .value
-        .iter()
-        .map(|value| Column::new(value.name.clone(), value.name.clone()))
-        .collect()
 }
 
 impl TableDelegate for BrowseTableDelegate {
@@ -138,11 +108,15 @@ impl DatabaseTableBrowser {
 
     /// Set the current table rows and columns from the provided collection
     /// of rows refreshing the visible table
-    fn set_rows(&mut self, rows: Vec<DatabaseRow>, cx: &mut Context<'_, Self>) {
+    fn set_result(&mut self, result: DatabaseQueryResult, cx: &mut Context<'_, Self>) {
         self.table_state.update(cx, |this, cx| {
             let delegate = this.delegate_mut();
-            delegate.columns = compute_columns(&rows);
-            delegate.data = rows.into_iter().map(|row| row.into()).collect();
+            delegate.columns = result
+                .column_names
+                .into_iter()
+                .map(|column| Column::new(column.clone(), column))
+                .collect();
+            delegate.data = result.rows;
 
             this.refresh(cx);
         });
@@ -154,12 +128,12 @@ impl DatabaseTableBrowser {
         query: DatabaseTableQuery,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<(Vec<DatabaseRow>, i64)> {
-        let rows = database
+    ) -> anyhow::Result<(DatabaseQueryResult, i64)> {
+        let result = database
             .query_table_rows(query.clone(), limit, offset)
             .await?;
         let count = database.query_table_rows_count(query.clone()).await?;
-        Ok((rows, count))
+        Ok((result, count))
     }
 
     /// Load the current table
@@ -182,8 +156,8 @@ impl DatabaseTableBrowser {
             let result = Self::load_table_page_async(database, query, limit, offset).await;
 
             _ = this.update(cx, |this, cx| match result {
-                Ok((rows, count)) => {
-                    this.set_rows(rows, cx);
+                Ok((result, count)) => {
+                    this.set_result(result, cx);
                     this.pagination.count = Some(count);
                     this.load_state = TableLoadState::Loaded;
                 }

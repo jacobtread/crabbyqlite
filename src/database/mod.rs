@@ -3,6 +3,7 @@ pub mod sqlite;
 use std::{any::Any, rc::Rc};
 
 use async_trait::async_trait;
+use gpui::SharedString;
 
 /// Database naming details
 #[derive(Debug, Clone)]
@@ -34,14 +35,14 @@ pub struct DatabaseOptions {
 }
 
 #[derive(Debug, Clone)]
-pub struct DatabaseRow {
-    pub value: Vec<DatabaseColumn>,
+pub struct DatabaseQueryResult {
+    pub column_names: Vec<SharedString>,
+    pub rows: Vec<DatabaseRow>,
 }
 
 #[derive(Debug, Clone)]
-pub struct DatabaseColumn {
-    pub name: String,
-    pub value: String,
+pub struct DatabaseRow {
+    pub values: Vec<SharedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -63,7 +64,7 @@ pub trait Database: Send + Sync + 'static {
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>>;
 
     /// Perform a query against the database
-    async fn query(&self, query: &str) -> anyhow::Result<Vec<DatabaseRow>>;
+    async fn query(&self, query: &str) -> anyhow::Result<DatabaseQueryResult>;
 
     /// Query the rows of a specific table
     async fn query_table_rows(
@@ -71,7 +72,7 @@ pub trait Database: Send + Sync + 'static {
         query: DatabaseTableQuery,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<DatabaseRow>>;
+    ) -> anyhow::Result<DatabaseQueryResult>;
 
     /// Query the total number of rows within a table
     async fn query_table_rows_count(&self, query: DatabaseTableQuery) -> anyhow::Result<i64>;

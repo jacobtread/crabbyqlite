@@ -1,12 +1,13 @@
 use std::{any::Any, path::Path, rc::Rc};
 
 use async_trait::async_trait;
+use gpui::SharedString;
 use tokio_rusqlite::{Connection, OpenFlags, params, types::ValueRef};
 
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::database::{
-    Database, DatabaseColumn, DatabaseOptions, DatabaseRow, DatabaseTable, DatabaseTableQuery,
+    Database, DatabaseOptions, DatabaseQueryResult, DatabaseRow, DatabaseTable, DatabaseTableQuery,
 };
 
 pub struct SqliteDatabase {
@@ -124,7 +125,7 @@ impl Database for SqliteDatabase {
         Ok(result)
     }
 
-    async fn query(&self, query: &str) -> anyhow::Result<Vec<DatabaseRow>> {
+    async fn query(&self, query: &str) -> anyhow::Result<DatabaseQueryResult> {
         let connection = self.connection.lock().await;
         let query = query.to_string();
 
@@ -133,35 +134,33 @@ impl Database for SqliteDatabase {
                 let mut statement = connection.prepare(&query)?;
 
                 // Collect the available column names
-                let column_names: Vec<String> = statement
+                let column_names: Vec<SharedString> = statement
                     .column_names()
                     .into_iter()
-                    .map(|value| value.to_string())
+                    .map(|value| value.into())
                     .collect();
 
-                let results = statement.query_map(params![], move |row| {
-                    let mut columns: Vec<DatabaseColumn> = Vec::with_capacity(column_names.len());
+                let column_count = statement.column_count();
 
-                    for (i, column_name) in column_names.iter().enumerate() {
+                let results = statement.query_map(params![], |row| {
+                    let mut values = Vec::new();
+
+                    for i in 0..column_count {
                         let value = row.get_ref(i)?;
                         let value = value_to_string(value);
-
-                        columns.push(DatabaseColumn {
-                            name: column_name.to_string(),
-                            value,
-                        });
+                        values.push(value.into());
                     }
 
-                    Ok(DatabaseRow { value: columns })
+                    Ok(DatabaseRow { values })
                 })?;
 
-                let mut result: Vec<DatabaseRow> = Vec::new();
+                let mut rows: Vec<DatabaseRow> = Vec::new();
 
                 for row_result in results {
-                    result.push(row_result?);
+                    rows.push(row_result?);
                 }
 
-                Ok::<_, tokio_rusqlite::rusqlite::Error>(result)
+                Ok::<_, tokio_rusqlite::rusqlite::Error>(DatabaseQueryResult { column_names, rows })
             })
             .await?;
 
@@ -173,7 +172,7 @@ impl Database for SqliteDatabase {
         query: DatabaseTableQuery,
         limit: i64,
         offset: i64,
-    ) -> anyhow::Result<Vec<DatabaseRow>> {
+    ) -> anyhow::Result<DatabaseQueryResult> {
         self.query(
             format!(
                 "SELECT * FROM {table} LIMIT {limit} OFFSET {offset}",
