@@ -5,15 +5,6 @@ use std::{any::Any, rc::Rc};
 use async_trait::async_trait;
 use gpui::SharedString;
 
-/// Database naming details
-#[derive(Debug, Clone)]
-pub struct DatabaseName {
-    /// Primary name (File name)
-    pub primary: String,
-    /// Alternative name (Connection String)
-    pub secondary: String,
-}
-
 #[derive(Debug, Clone)]
 pub struct DatabaseTable {
     /// Name of the database table

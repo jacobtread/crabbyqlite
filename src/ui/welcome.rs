@@ -6,10 +6,17 @@ use crate::ui::{
     translated::ts,
 };
 use gpui::{
-    Action, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder, px,
+    Action, App, Context, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div,
+    prelude::FluentBuilder, px,
 };
-use gpui_component::{ActiveTheme, Colorize, Icon, IconName, StyledExt, kbd::Kbd, label::Label};
+use gpui_component::{
+    ActiveTheme, Colorize, Icon, IconName, StyledExt,
+    button::{Button, ButtonVariants},
+    kbd::Kbd,
+    label::Label,
+    menu::{DropdownMenu, PopupMenu},
+};
 
 #[derive(IntoElement)]
 pub struct WelcomeView;
@@ -46,46 +53,60 @@ impl RenderOnce for WelcomeView {
                                         cx.theme().secondary_foreground.lighten(0.1).opacity(0.3),
                                     )),
                             )
-                            .child(WelcomeButton::new(
-                                "new-database",
-                                ts("new-database"),
-                                Box::new(NewDatabase),
-                                Icon::new(IconName::Plus),
-                            ))
-                            .child(WelcomeButton::new(
-                                "new-in-memory-database",
-                                ts("new-in-memory-database"),
-                                Box::new(NewMemoryDatabase),
-                                Icon::new(IconName::Plus),
-                            ))
-                            .child(WelcomeButton::new(
-                                "open-database",
-                                ts("open-database"),
-                                Box::new(OpenFile::default()),
-                                Icon::new(IconName::File),
-                            ))
-                            .child(WelcomeButton::new(
-                                "open-read-only-database",
-                                ts("open-read-only-database"),
-                                Box::new(OpenFile { read_only: true }),
-                                Icon::new(IconName::File),
-                            ))
-                            .child(WelcomeButton::new(
-                                "open-encrypted-database",
-                                ts("open-encrypted-database"),
-                                Box::new(OpenFileEncrypted { read_only: false }),
-                                Icon::new(IconName::File),
-                            ))
-                            .child(WelcomeButton::new(
-                                "open-read-only-encrypted-database",
-                                ts("open-read-only-encrypted-database"),
-                                Box::new(OpenFileEncrypted { read_only: true }),
-                                Icon::new(IconName::File),
-                            )),
+                            .child(
+                                WelcomeButton::new(
+                                    "new-database",
+                                    ts("new-database"),
+                                    Box::new(NewDatabase),
+                                    Icon::new(IconName::Plus),
+                                )
+                                .dropdown_menu(|menu, _, _| {
+                                    menu.menu(ts("new-database"), Box::new(NewDatabase)).menu(
+                                        ts("new-in-memory-database"),
+                                        Box::new(NewMemoryDatabase),
+                                    )
+                                }),
+                            )
+                            .child(
+                                WelcomeButton::new(
+                                    "open-database",
+                                    ts("open-database"),
+                                    Box::new(OpenFile::default()),
+                                    Icon::new(IconName::File),
+                                )
+                                .dropdown_menu(|menu, _, _| {
+                                    menu.menu(ts("open-database"), Box::new(OpenFile::default()))
+                                        .menu(
+                                            ts("open-read-only-database"),
+                                            Box::new(OpenFile { read_only: true }),
+                                        )
+                                }),
+                            )
+                            .child(
+                                WelcomeButton::new(
+                                    "open-encrypted-database",
+                                    ts("open-encrypted-database"),
+                                    Box::new(OpenFileEncrypted { read_only: false }),
+                                    Icon::new(IconName::File),
+                                )
+                                .dropdown_menu(|menu, _, _| {
+                                    menu.menu(
+                                        ts("open-encrypted-database"),
+                                        Box::new(OpenFileEncrypted { read_only: false }),
+                                    )
+                                    .menu(
+                                        ts("open-read-only-encrypted-database"),
+                                        Box::new(OpenFileEncrypted { read_only: true }),
+                                    )
+                                }),
+                            ),
                     ),
             )
     }
 }
+
+type MenuCallback =
+    Box<dyn Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static>;
 
 #[derive(IntoElement)]
 struct WelcomeButton {
@@ -93,6 +114,7 @@ struct WelcomeButton {
     label: SharedString,
     action: Box<dyn Action>,
     icon: Icon,
+    menu: Option<MenuCallback>,
 }
 
 impl WelcomeButton {
@@ -107,7 +129,17 @@ impl WelcomeButton {
             label,
             action,
             icon,
+            menu: None,
         }
+    }
+
+    /// Set the dropdown menu of the button.
+    pub fn dropdown_menu(
+        mut self,
+        menu: impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static,
+    ) -> Self {
+        self.menu = Some(Box::new(menu));
+        self
     }
 }
 
@@ -131,7 +163,7 @@ impl RenderOnce for WelcomeButton {
             .justify_start()
             .w_full()
             .h_8()
-            .pr_4()
+            // .pr_4()
             .pl_2()
             .rounded_sm()
             .cursor_pointer()
@@ -145,15 +177,25 @@ impl RenderOnce for WelcomeButton {
                     cx.theme().secondary.darken(0.1).opacity(0.8)
                 })
             })
+            // Horizontal spacer
+            .child(div().flex_auto())
             .when_some(key_binding, |this, kbd| {
                 this.child(
                     div()
-                        .flex_auto()
                         .text_xs()
                         .flex_shrink_0()
-                        .text_right()
                         .text_color(cx.theme().muted_foreground)
                         .child(kbd.appearance(false)),
+                )
+            })
+            .when_some(self.menu, |this, menu| {
+                this.child(
+                    Button::new("popup")
+                        .icon(IconName::ChevronDown)
+                        .text()
+                        .cursor_pointer()
+                        .p_2()
+                        .dropdown_menu(menu),
                 )
             })
     }
