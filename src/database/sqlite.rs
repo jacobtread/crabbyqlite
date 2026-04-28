@@ -6,12 +6,12 @@ use tokio_rusqlite::{Connection, OpenFlags, params, types::ValueRef};
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::database::{
-    Database, DatabaseColumn, DatabaseName, DatabaseRow, DatabaseTable, DatabaseTableQuery,
+    Database, DatabaseColumn, DatabaseOptions, DatabaseRow, DatabaseTable, DatabaseTableQuery,
 };
 
 pub struct SqliteDatabase {
-    name: DatabaseName,
     connection: Mutex<Connection>,
+    options: DatabaseOptions,
 }
 
 #[derive(Default)]
@@ -29,13 +29,13 @@ impl SqliteDatabase {
             );
         }
 
-        let mut options_text: Vec<String> = Vec::new();
+        let readonly = db_options.readonly;
+        let encrypted = db_options.key.is_some();
 
         let mut flags = OpenFlags::default();
-        if db_options.readonly {
+        if readonly {
             flags.remove(OpenFlags::SQLITE_OPEN_READ_WRITE);
             flags.insert(OpenFlags::SQLITE_OPEN_READ_ONLY);
-            options_text.push("readonly".to_string());
         }
 
         let connection = Connection::open_with_flags(path, flags).await?;
@@ -44,18 +44,20 @@ impl SqliteDatabase {
             connection
                 .call(move |connection| connection.pragma_update(None, "key", key))
                 .await?;
-            options_text.push("encrypted".to_string());
         }
 
+        let path = path
+            .file_name()
+            .map(|value| value.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.to_string_lossy().to_string());
+
         Ok(Self {
-            name: DatabaseName {
-                primary: path
-                    .file_name()
-                    .map(|value| value.to_string_lossy().to_string())
-                    .unwrap_or_else(|| path.to_string_lossy().to_string()),
-                secondary: options_text.join(", "),
-            },
             connection: Mutex::new(connection),
+            options: DatabaseOptions {
+                path,
+                readonly,
+                encrypted,
+            },
         })
     }
 
@@ -63,11 +65,11 @@ impl SqliteDatabase {
     pub async fn memory() -> anyhow::Result<Self> {
         let connection = Connection::open_in_memory().await?;
         Ok(Self {
-            name: DatabaseName {
-                primary: "Memory".to_string(),
-                secondary: ":memory:".to_string(),
-            },
             connection: Mutex::new(connection),
+            options: DatabaseOptions {
+                path: ":memory:".to_string(),
+                ..Default::default()
+            },
         })
     }
 
@@ -84,8 +86,8 @@ impl Database for SqliteDatabase {
         self
     }
 
-    fn name(&self) -> DatabaseName {
-        self.name.clone()
+    fn options(&self) -> DatabaseOptions {
+        self.options.clone()
     }
 
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>> {

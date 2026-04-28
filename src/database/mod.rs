@@ -21,6 +21,18 @@ pub struct DatabaseTable {
     pub sql: String,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct DatabaseOptions {
+    /// Path to the database file
+    pub path: String,
+
+    /// Whether the db is readonly
+    pub readonly: bool,
+
+    /// Whether the db is encrypted
+    pub encrypted: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct DatabaseRow {
     pub value: Vec<DatabaseColumn>,
@@ -45,7 +57,7 @@ pub trait Database: Send + Sync + 'static {
     fn as_any(self: Rc<Self>) -> Rc<dyn Any>;
 
     /// Get the name of the database
-    fn name(&self) -> DatabaseName;
+    fn options(&self) -> DatabaseOptions;
 
     /// List tables within the database
     async fn database_tables(&self) -> anyhow::Result<Vec<DatabaseTable>>;
