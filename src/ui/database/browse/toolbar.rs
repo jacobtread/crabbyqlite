@@ -56,12 +56,14 @@ impl Render for DatabaseBrowseDataViewToolbar {
     ) -> impl gpui::IntoElement {
         div().h_flex().child(
             div().w_auto().child(
-                Select::new(&self.table_select_state).empty(
-                    h_flex()
-                        .justify_center()
-                        .text_color(cx.theme().muted_foreground)
-                        .child("No options available"),
-                ),
+                Select::new(&self.table_select_state)
+                    .empty(
+                        h_flex()
+                            .justify_center()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("No options available"),
+                    )
+                    .min_w_80(),
             ),
         )
     }
