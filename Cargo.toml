@@ -33,6 +33,7 @@ serde = "1.0.228"
 
 # Database (With SLQCipher)
 tokio-rusqlite = { version = "0.7.0", features = ["bundled-sqlcipher-vendored-openssl"] }
+itertools = "0.14.0"
 
 
 [dev-dependencies]

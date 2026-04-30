@@ -2,12 +2,14 @@ use std::{any::Any, path::Path, rc::Rc};
 
 use async_trait::async_trait;
 use gpui::SharedString;
-use tokio_rusqlite::{Connection, OpenFlags, params, types::ValueRef};
+use itertools::Itertools;
+use tokio_rusqlite::{Connection, OpenFlags, params, rusqlite, types::ValueRef};
 
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::database::{
-    Database, DatabaseOptions, DatabaseQueryResult, DatabaseRow, DatabaseTable, DatabaseTableQuery,
+    Database, DatabaseOptions, DatabaseQueryResult, DatabaseRow, DatabaseTable,
+    DatabaseTableColumn, DatabaseTableQuery,
 };
 
 pub struct SqliteDatabase {
@@ -81,6 +83,53 @@ impl SqliteDatabase {
     }
 }
 
+fn query_table_columns(
+    connection: &mut rusqlite::Connection,
+    table_name: &str,
+) -> Result<Vec<DatabaseTableColumn>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        r#"SELECT "name", "type", "notnull", "pk"  FROM pragma_table_info(?1) ORDER BY "name""#,
+    )?;
+
+    let results: Vec<DatabaseTableColumn> = statement
+        .query_map(params![table_name], |row| {
+            Ok(DatabaseTableColumn {
+                name: row.get(0)?,
+                column_type: row.get(1)?,
+                not_null: row.get(2)?,
+                primary_key: row.get(3)?,
+            })
+        })?
+        .try_collect()?;
+
+    Ok(results)
+}
+
+fn query_tables(
+    connection: &mut rusqlite::Connection,
+) -> Result<Vec<DatabaseTable>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        r#"
+        SELECT "name", "sql"
+        FROM sqlite_master
+        WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+        ORDER BY "name"
+        "#,
+    )?;
+
+    let results: Vec<DatabaseTable> = statement
+        .query_map(params![], |row| {
+            Ok(DatabaseTable {
+                name: row.get(0)?,
+                sql: row.get(1)?,
+                columns: Vec::new(),
+            })
+        })?
+        .try_collect()?;
+
+    Ok(results)
+}
+
 #[async_trait]
 impl Database for SqliteDatabase {
     fn as_any(self: Rc<Self>) -> Rc<dyn Any> {
@@ -96,29 +145,14 @@ impl Database for SqliteDatabase {
 
         let result = connection
             .call(|connection| {
-                let mut statement = connection.prepare(
-                    r#"
-            SELECT "name", "sql"
-            FROM sqlite_master
-            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-            ORDER BY "name"
-            "#,
-                )?;
+                let mut tables: Vec<DatabaseTable> = query_tables(connection)?;
 
-                let results = statement.query_map(params![], |row| {
-                    Ok(DatabaseTable {
-                        name: row.get(0)?,
-                        sql: row.get(1)?,
-                    })
-                })?;
-
-                let mut result: Vec<DatabaseTable> = Vec::new();
-
-                for row_result in results {
-                    result.push(row_result?);
+                for table in &mut tables {
+                    let columns = query_table_columns(connection, &table.name)?;
+                    table.columns = columns;
                 }
 
-                Ok::<_, tokio_rusqlite::rusqlite::Error>(result)
+                Ok::<_, rusqlite::Error>(tables)
             })
             .await?;
 
@@ -160,7 +194,7 @@ impl Database for SqliteDatabase {
                     rows.push(row_result?);
                 }
 
-                Ok::<_, tokio_rusqlite::rusqlite::Error>(DatabaseQueryResult { column_names, rows })
+                Ok::<_, rusqlite::Error>(DatabaseQueryResult { column_names, rows })
             })
             .await?;
 

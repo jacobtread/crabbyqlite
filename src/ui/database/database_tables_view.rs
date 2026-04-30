@@ -14,7 +14,7 @@ use crate::{
     state::{
         AppStateExt, async_resource::AsyncResource, database_tables::database_tables_resource,
     },
-    ui::{sql_editor::SqlEditor, translated::ts},
+    ui::{database::tables::DatabaseTablesTreeView, sql_editor::SqlEditor, translated::ts},
 };
 
 pub struct DatabaseTablesView {
@@ -23,6 +23,8 @@ pub struct DatabaseTablesView {
 
     /// State for the database table
     table_state: Entity<TableState<DatabaseTableDelegate>>,
+
+    tree: Entity<DatabaseTablesTreeView>,
 }
 
 struct DatabaseTableRow {
@@ -105,6 +107,7 @@ impl TableDelegate for DatabaseTableDelegate {
 impl DatabaseTablesView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
         let table_state = cx.new(|cx| TableState::new(DatabaseTableDelegate::new(), window, cx));
+        let tree = DatabaseTablesTreeView::new(window, cx);
 
         cx.new(|cx| {
             let tables = database_tables_resource(cx);
@@ -117,22 +120,27 @@ impl DatabaseTablesView {
 
                 tracing::debug!("loaded tables data for display");
 
-                this.table_state.update(cx, |this, cx| {
-                    this.delegate_mut().data = tables_data
-                        .into_iter()
-                        .map(|table| DatabaseTableRow {
-                            name: table.name.into(),
-                            sql: table.sql.into(),
-                        })
-                        .collect();
-                    this.refresh(cx);
+                this.tree.update(cx, |this, cx| {
+                    this.set_entries(tables_data, cx);
                 });
+
+                // this.table_state.update(cx, |this, cx| {
+                //     this.delegate_mut().data = tables_data
+                //         .into_iter()
+                //         .map(|table| DatabaseTableRow {
+                //             name: table.name.into(),
+                //             sql: table.sql.into(),
+                //         })
+                //         .collect();
+                //     this.refresh(cx);
+                // });
             })
             .detach();
 
             Self {
                 tables,
                 table_state,
+                tree,
             }
         })
     }
@@ -157,10 +165,10 @@ impl Render for DatabaseTablesView {
                 .size_full()
                 //
                 .child(
-                    DataTable::new(&self.table_state)
-                        .stripe(true)
-                        .bordered(true)
-                        .scrollbar_visible(true, true),
+                    self.tree.clone(), // DataTable::new(&self.table_state)
+                                       //     .stripe(true)
+                                       //     .bordered(true)
+                                       //     .scrollbar_visible(true, true),
                 ),
 
             //

@@ -11,6 +11,16 @@ pub struct DatabaseTable {
     pub name: String,
     /// SQL used to create the database table
     pub sql: String,
+    /// Columns on the database table
+    pub columns: Vec<DatabaseTableColumn>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DatabaseTableColumn {
+    pub name: String,
+    pub column_type: String,
+    pub not_null: bool,
+    pub primary_key: bool,
 }
 
 #[derive(Debug, Clone, Default)]

@@ -4,6 +4,8 @@ use gpui_component::{Icon, IconNamed};
 #[derive(IntoElement, Clone)]
 pub enum CustomIconName {
     Cable,
+    Database,
+    Box,
 }
 
 impl CustomIconName {
@@ -17,6 +19,8 @@ impl IconNamed for CustomIconName {
     fn path(self) -> SharedString {
         match self {
             Self::Cable => "icons/cable.svg",
+            Self::Database => "icons/database.svg",
+            Self::Box => "icons/box.svg",
         }
         .into()
     }
