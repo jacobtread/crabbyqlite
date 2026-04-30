@@ -1,12 +1,12 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc, vec};
+use std::{collections::HashMap, sync::Arc};
 
 use gpui::{
-    App, AppContext, Context, ElementId, Entity, InteractiveElement, NoAction, ParentElement,
-    Render, SharedString, StatefulInteractiveElement, Styled, Window, div, prelude::FluentBuilder,
-    px,
+    App, AppContext, Context, ElementId, Entity, InteractiveElement, IntoElement, NoAction,
+    ParentElement, Render, RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window,
+    div, prelude::FluentBuilder, px,
 };
 use gpui_component::{
-    Icon, IconName, StyledExt,
+    StyledExt,
     list::ListItem,
     menu::ContextMenuExt,
     tag::Tag,
@@ -14,7 +14,6 @@ use gpui_component::{
     tree::{TreeItem, TreeState, tree},
 };
 use sqlformat::FormatOptions;
-use tracing::Instrument;
 
 use crate::{
     database::DatabaseTable,
@@ -29,11 +28,13 @@ pub struct DatabaseTablesTreeView {
     columns_data: Arc<HashMap<SharedString, TableColumnData>>,
 }
 
+#[derive(Clone)]
 struct TableData {
     name: SharedString,
     sql: SharedString,
 }
 
+#[derive(Clone)]
 struct TableColumnData {
     name: SharedString,
     column_type: SharedString,
@@ -94,96 +95,129 @@ impl DatabaseTablesTreeView {
     }
 }
 
+#[derive(IntoElement)]
+struct TableListItem {
+    table_data: TableData,
+}
+
+impl TableListItem {
+    fn new(table_data: TableData) -> Self {
+        Self { table_data }
+    }
+}
+
+impl RenderOnce for TableListItem {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl gpui::IntoElement {
+        let table_name = self.table_data.name;
+
+        div()
+            .h_flex()
+            .gap_2()
+            .child(CustomIconName::Database)
+            .child(table_name.clone())
+            .child(
+                div()
+                    .max_w_40()
+                    .text_ellipsis()
+                    .overflow_hidden()
+                    .child(Tag::secondary().outline().child("SQL"))
+                    .id(ElementId::Name(
+                        format!("schema-tooltip-{table_name}").into(),
+                    ))
+                    .tooltip(move |window, cx| {
+                        let sql = self.table_data.sql.clone();
+
+                        Tooltip::element(move |window, cx| {
+                            let database = cx.database();
+
+                            let options = FormatOptions::default();
+                            let formatted =
+                                sqlformat::format(&sql, &sqlformat::QueryParams::None, &options);
+
+                            let editor =
+                                SqlEditor::new(window, cx, formatted.into(), true, database);
+
+                            div()
+                                //
+                                .w(px(400.0))
+                                .h(px(400.0))
+                                .child(editor)
+                                .overflow_hidden()
+                        })
+                        .build(window, cx)
+                    }),
+            )
+            .context_menu(|menu, _window, _cx| {
+                // TODO:
+                menu.menu(ts("browse-table"), Box::new(NoAction))
+                    .separator()
+                    .menu(ts("copy-create-statement"), Box::new(NoAction))
+            })
+    }
+}
+
+#[derive(IntoElement)]
+struct ColumnListItem {
+    column: TableColumnData,
+}
+
+impl ColumnListItem {
+    fn new(column: TableColumnData) -> Self {
+        Self { column }
+    }
+}
+impl RenderOnce for ColumnListItem {
+    fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let column = self.column;
+
+        div()
+            .h_flex()
+            .gap_2()
+            .child(CustomIconName::Box)
+            .child(column.name.clone())
+            .child(column.column_type.clone())
+            .when(column.not_null, |this| {
+                this.child(Tag::warning().outline().child("NOT NULL"))
+            })
+            .when(column.primary_key, |this| {
+                this.child(Tag::info().outline().child("PK"))
+            })
+    }
+}
+
 impl Render for DatabaseTablesTreeView {
     fn render(
         &mut self,
-        window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
+        _window: &mut gpui::Window,
+        _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let tables_data = self.tables_data.clone();
         let columns_data = self.columns_data.clone();
 
-        tree(&self.tree_state, move |ix, entry, selected, window, cx| {
+        tree(&self.tree_state, move |ix, entry, selected, _window, _cx| {
             let item = entry.item();
 
             if entry.depth() == 0 {
-                let entry_data = tables_data.get(&item.id).expect("table data should exist");
-                let sql = entry_data.sql.clone();
+                let entry_data = tables_data
+                    .get(&item.id)
+                    .expect("table data should exist")
+                    .clone();
 
                 return ListItem::new(ix)
                     .selected(selected)
                     .pl(px(16.) * entry.depth() + px(12.)) // Indent based on depth
-                    .child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .child(CustomIconName::Database)
-                            .child(item.label.clone())
-                            .child(
-                                div()
-                                    .max_w_40()
-                                    .text_ellipsis()
-                                    .overflow_hidden()
-                                    .child(Tag::secondary().outline().child("SQL"))
-                                    .id(ElementId::Name(format!("schema-tooltip-{ix}").into()))
-                                    .tooltip(move |window, cx| {
-                                        let sql = sql.clone();
-
-                                        Tooltip::element(move |window, cx| {
-                                            let database = cx.database();
-
-                                            let options = FormatOptions::default();
-                                            let formatted = sqlformat::format(
-                                                &sql,
-                                                &sqlformat::QueryParams::None,
-                                                &options,
-                                            );
-
-                                            let editor = SqlEditor::new(
-                                                window,
-                                                cx,
-                                                formatted.into(),
-                                                true,
-                                                database,
-                                            );
-
-                                            div()
-                                                //
-                                                .w(px(400.0))
-                                                .h(px(400.0))
-                                                .child(editor)
-                                                .overflow_hidden()
-                                        })
-                                        .build(window, cx)
-                                    }),
-                            )
-                            .context_menu(|menu, window, cx| {
-                                // TODO:
-                                menu.menu(ts("browse-table"), Box::new(NoAction))
-                                    .separator()
-                                    .menu(ts("copy-create-statement"), Box::new(NoAction))
-                            }),
-                    );
+                    .child(TableListItem::new(entry_data));
             }
-            let column = columns_data.get(&item.id).expect("table data should exist");
+
+            let column = columns_data
+                .get(&item.id)
+                .expect("table data should exist")
+                .clone();
 
             ListItem::new(ix)
                 .selected(selected)
                 .pl(px(16.) * entry.depth() + px(12.)) // Indent based on depth
-                .child(
-                    div()
-                        .h_flex()
-                        .gap_2()
-                        .child(CustomIconName::Box)
-                        .child(column.name.clone())
-                        .child(column.column_type.clone())
-                        .when(column.not_null, |this| {
-                            this.child(Tag::warning().outline().child("NOT NULL"))
-                        })
-                        .when(column.primary_key, |this| {
-                            this.child(Tag::info().outline().child("PK"))
-                        }),
-                )
+                .child(ColumnListItem::new(column))
         })
     }
 }
