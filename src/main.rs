@@ -34,6 +34,7 @@ pub struct MainApp {
 impl Render for MainApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let dialog_layer = Root::render_dialog_layer(window, cx);
+        let notification_layer = Root::render_notification_layer(window, cx);
         let database = cx.database();
 
         div()
@@ -44,6 +45,7 @@ impl Render for MainApp {
                 AsyncResource::Idle => WelcomeView.into_any_element(),
                 _ => self.database_view.clone().into_any_element(),
             }))
+            .children(notification_layer)
             .children(dialog_layer)
     }
 }
@@ -66,6 +68,12 @@ fn main() {
 
         // Initialize using dark theme
         Theme::change(ThemeMode::Dark, None, cx);
+
+        // Move the notifications to the bottom right
+        {
+            let theme = Theme::global_mut(cx);
+            theme.notification.placement = Anchor::BottomRight;
+        }
 
         init_keybindings(cx);
 
@@ -97,6 +105,7 @@ fn main() {
                         app_title_bar: AppTitleBar::new(window, cx),
                         database_view: DatabaseView::new(window, cx),
                     });
+
                     // This first level on the window, should be a Root.
                     cx.new(|cx| Root::new(view, window, cx))
                 },

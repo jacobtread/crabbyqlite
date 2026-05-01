@@ -18,7 +18,9 @@ use sqlformat::FormatOptions;
 use crate::{
     database::DatabaseTable,
     state::AppStateExt,
-    ui::{icons::CustomIconName, sql_editor::SqlEditor, translated::ts},
+    ui::{
+        actions::copy_text::CopyText, icons::CustomIconName, sql_editor::SqlEditor, translated::ts,
+    },
 };
 
 pub struct DatabaseTablesTreeView {
@@ -109,6 +111,7 @@ impl TableListItem {
 impl RenderOnce for TableListItem {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl gpui::IntoElement {
         let table_name = self.table_data.name;
+        let sql = self.table_data.sql;
 
         div()
             .h_flex()
@@ -124,34 +127,49 @@ impl RenderOnce for TableListItem {
                     .id(ElementId::Name(
                         format!("schema-tooltip-{table_name}").into(),
                     ))
-                    .tooltip(move |window, cx| {
-                        let sql = self.table_data.sql.clone();
+                    .tooltip({
+                        let sql = sql.clone();
+                        move |window, cx| {
+                            let sql = sql.clone();
 
-                        Tooltip::element(move |window, cx| {
-                            let database = cx.database();
+                            Tooltip::element(move |window, cx| {
+                                let database = cx.database();
 
-                            let options = FormatOptions::default();
-                            let formatted =
-                                sqlformat::format(&sql, &sqlformat::QueryParams::None, &options);
+                                let options = FormatOptions::default();
+                                let formatted = sqlformat::format(
+                                    &sql,
+                                    &sqlformat::QueryParams::None,
+                                    &options,
+                                );
 
-                            let editor =
-                                SqlEditor::new(window, cx, formatted.into(), true, database);
+                                let editor =
+                                    SqlEditor::new(window, cx, formatted.into(), true, database);
 
-                            div()
-                                //
-                                .w(px(400.0))
-                                .h(px(400.0))
-                                .child(editor)
-                                .overflow_hidden()
-                        })
-                        .build(window, cx)
+                                div()
+                                    //
+                                    .w(px(400.0))
+                                    .h(px(400.0))
+                                    .child(editor)
+                                    .overflow_hidden()
+                            })
+                            .build(window, cx)
+                        }
                     }),
             )
-            .context_menu(|menu, _window, _cx| {
-                // TODO:
-                menu.menu(ts("browse-table"), Box::new(NoAction))
-                    .separator()
-                    .menu(ts("copy-create-statement"), Box::new(NoAction))
+            .context_menu({
+                let sql = sql.clone();
+                move |menu, _window, _cx| {
+                    // TODO: Browse table
+                    menu.menu(ts("browse-table"), Box::new(NoAction))
+                        .separator()
+                        .menu(
+                            ts("copy-create-statement"),
+                            Box::new(CopyText {
+                                text: sql.clone(),
+                                label: ts("copied-create-statement"),
+                            }),
+                        )
+                }
             })
     }
 }
@@ -194,30 +212,33 @@ impl Render for DatabaseTablesTreeView {
         let tables_data = self.tables_data.clone();
         let columns_data = self.columns_data.clone();
 
-        tree(&self.tree_state, move |ix, entry, selected, _window, _cx| {
-            let item = entry.item();
+        tree(
+            &self.tree_state,
+            move |ix, entry, selected, _window, _cx| {
+                let item = entry.item();
 
-            if entry.depth() == 0 {
-                let entry_data = tables_data
+                if entry.depth() == 0 {
+                    let entry_data = tables_data
+                        .get(&item.id)
+                        .expect("table data should exist")
+                        .clone();
+
+                    return ListItem::new(ix)
+                        .selected(selected)
+                        .pl(px(16.) * entry.depth() + px(12.)) // Indent based on depth
+                        .child(TableListItem::new(entry_data));
+                }
+
+                let column = columns_data
                     .get(&item.id)
                     .expect("table data should exist")
                     .clone();
 
-                return ListItem::new(ix)
+                ListItem::new(ix)
                     .selected(selected)
                     .pl(px(16.) * entry.depth() + px(12.)) // Indent based on depth
-                    .child(TableListItem::new(entry_data));
-            }
-
-            let column = columns_data
-                .get(&item.id)
-                .expect("table data should exist")
-                .clone();
-
-            ListItem::new(ix)
-                .selected(selected)
-                .pl(px(16.) * entry.depth() + px(12.)) // Indent based on depth
-                .child(ColumnListItem::new(column))
-        })
+                    .child(ColumnListItem::new(column))
+            },
+        )
     }
 }

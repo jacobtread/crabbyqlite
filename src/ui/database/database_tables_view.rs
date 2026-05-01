@@ -1,112 +1,21 @@
-use gpui::{
-    App, AppContext, Context, Element, ElementId, Entity, InteractiveElement, IntoElement,
-    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
-};
-use gpui_component::{
-    alert::Alert,
-    spinner::Spinner,
-    table::{Column, DataTable, TableDelegate, TableState},
-    tooltip::Tooltip,
-};
+use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, Window, div};
+use gpui_component::{alert::Alert, spinner::Spinner};
 
 use crate::{
     database::DatabaseTable,
-    state::{
-        AppStateExt, async_resource::AsyncResource, database_tables::database_tables_resource,
-    },
-    ui::{database::tables::DatabaseTablesTreeView, sql_editor::SqlEditor, translated::ts},
+    state::{async_resource::AsyncResource, database_tables::database_tables_resource},
+    ui::{database::tables::DatabaseTablesTreeView, translated::ts},
 };
 
 pub struct DatabaseTablesView {
     /// Currently loaded set of database tables
     tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
 
-    /// State for the database table
-    table_state: Entity<TableState<DatabaseTableDelegate>>,
-
     tree: Entity<DatabaseTablesTreeView>,
-}
-
-struct DatabaseTableRow {
-    name: SharedString,
-    sql: SharedString,
-}
-
-struct DatabaseTableDelegate {
-    data: Vec<DatabaseTableRow>,
-    columns: Vec<Column>,
-}
-
-impl DatabaseTableDelegate {
-    fn new() -> Self {
-        Self {
-            data: vec![],
-            columns: vec![
-                Column::new("name", ts("name")).width(150.).sortable(),
-                Column::new("schema", ts("schema")).width(400.),
-            ],
-        }
-    }
-}
-
-impl TableDelegate for DatabaseTableDelegate {
-    fn columns_count(&self, _: &App) -> usize {
-        self.columns.len()
-    }
-
-    fn rows_count(&self, _: &App) -> usize {
-        self.data.len()
-    }
-
-    fn column(&self, col_ix: usize, _: &App) -> Column {
-        self.columns[col_ix].clone()
-    }
-
-    fn render_td(
-        &mut self,
-        row_ix: usize,
-        col_ix: usize,
-        _window: &mut Window,
-        _cx: &mut Context<TableState<Self>>,
-    ) -> impl IntoElement {
-        let row = &self.data[row_ix];
-        let col = &self.columns[col_ix];
-
-        let sql = row.sql.clone();
-
-        match col.key.as_ref() {
-            "name" => row.name.clone().into_any_element(),
-            "schema" => div()
-                .child(sql.clone())
-                .id(ElementId::Name(
-                    format!("schema-tooltip-{row_ix}-{col_ix}").into(),
-                ))
-                .tooltip(move |window, cx| {
-                    let sql = sql.clone();
-
-                    Tooltip::element(move |window, cx| {
-                        let database = cx.database();
-                        let editor = SqlEditor::new(window, cx, sql.clone(), true, database);
-
-                        div()
-                            //
-                            .w(px(400.0))
-                            .h(px(400.0))
-                            .child(editor)
-                            .overflow_hidden()
-                    })
-                    .build(window, cx)
-                })
-                .into_any(),
-
-            _ => div().into_any(),
-        }
-    }
 }
 
 impl DatabaseTablesView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
-        let table_state = cx.new(|cx| TableState::new(DatabaseTableDelegate::new(), window, cx));
         let tree = DatabaseTablesTreeView::new(window, cx);
 
         cx.new(|cx| {
@@ -123,25 +32,10 @@ impl DatabaseTablesView {
                 this.tree.update(cx, |this, cx| {
                     this.set_entries(tables_data, cx);
                 });
-
-                // this.table_state.update(cx, |this, cx| {
-                //     this.delegate_mut().data = tables_data
-                //         .into_iter()
-                //         .map(|table| DatabaseTableRow {
-                //             name: table.name.into(),
-                //             sql: table.sql.into(),
-                //         })
-                //         .collect();
-                //     this.refresh(cx);
-                // });
             })
             .detach();
 
-            Self {
-                tables,
-                table_state,
-                tree,
-            }
+            Self { tables, tree }
         })
     }
 }
@@ -164,12 +58,7 @@ impl Render for DatabaseTablesView {
             AsyncResource::Loaded(_) => div()
                 .size_full()
                 //
-                .child(
-                    self.tree.clone(), // DataTable::new(&self.table_state)
-                                       //     .stripe(true)
-                                       //     .bordered(true)
-                                       //     .scrollbar_visible(true, true),
-                ),
+                .child(self.tree.clone()),
 
             //
             AsyncResource::Error(error) => div()

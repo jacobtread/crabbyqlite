@@ -62,7 +62,7 @@ pub fn open_encrypted_database(OpenFileEncrypted { read_only }: &OpenFileEncrypt
 
 /// Handle the user completing picking the database path
 fn on_encrypted_database_path_picked(cx: &mut App, path: PathBuf, readonly: bool) {
-    let window = cx.active_window().unwrap();
+    let window = cx.active_window().expect("expected a active window");
     _ = window.update(cx, move |_view, window, cx| {
         on_open_password_dialog(window, cx, path, readonly);
     });
