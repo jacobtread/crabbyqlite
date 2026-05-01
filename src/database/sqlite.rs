@@ -88,7 +88,7 @@ fn query_table_columns(
     table_name: &str,
 ) -> Result<Vec<DatabaseTableColumn>, rusqlite::Error> {
     let mut statement = connection.prepare(
-        r#"SELECT "name", "type", "notnull", "pk"  FROM pragma_table_info(?1) ORDER BY "name""#,
+        r#"SELECT "name", "type", "notnull", "pk"  FROM pragma_table_info(?1) ORDER BY "cid""#,
     )?;
 
     let results: Vec<DatabaseTableColumn> = statement
