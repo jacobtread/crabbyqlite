@@ -2,6 +2,12 @@
 name = "crabbyqlite"
 version = "0.1.0"
 edition = "2024"
+description = "Tool for working with SQLite files"
+license = "MIT"
+readme = "README.md"
+authors = ["Jacobtread <jacobtread@gmail.com>"]
+homepage = "https://github.com/jacobtread/crabbyqlite"
+repository = "https://github.com/jacobtread/crabbyqlite"
 
 [dependencies]
 anyhow = "1.0.100"
