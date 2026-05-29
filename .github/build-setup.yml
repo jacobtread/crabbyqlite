@@ -1,0 +1,9 @@
+- name: Install packages (Linux)
+  if: runner.os == 'Linux'
+  run: |
+      set -eux
+      sudo apt-get update
+      sudo apt-get install -y --no-install-recommends \
+        build-essential pkg-config ca-certificates curl git perl \
+        libxkbcommon-dev libxkbcommon-x11-dev libffi-dev \
+        zlib1g-dev

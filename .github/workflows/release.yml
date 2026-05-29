@@ -127,6 +127,15 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
+      - name: "Install packages (Linux)"
+        if: "runner.os == 'Linux'"
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config ca-certificates curl git perl \
+            libxkbcommon-dev libxkbcommon-x11-dev libffi-dev \
+            zlib1g-dev
       - name: Install dist
         run: ${{ matrix.install_dist.run }}
       # Get the dist-manifest
