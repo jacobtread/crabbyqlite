@@ -91,7 +91,7 @@ impl Render for DatabaseView {
                 .child(match self.active_tab {
                     0 => div().size_full().child(self.tables_view.clone()).into_any(),
                     1 => div().size_full().child(self.browse_view.clone()).into_any(),
-                    2 => div().child("Edit Pragmas").into_any(),
+                    2 => div().child("Edit Pragmas is not available yet").into_any(),
                     3 => div().size_full().child(self.executor.clone()).into_any(),
                     _ => div().into_any(),
                 }),
