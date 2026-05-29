@@ -52,17 +52,17 @@ impl Render for DatabaseBrowseDataViewToolbar {
     fn render(
         &mut self,
         _window: &mut Window,
-        cx: &mut gpui::Context<Self>,
+        _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         div().h_flex().child(
             div().w_auto().child(
                 Select::new(&self.table_select_state)
-                    .empty(
+                    .empty(|_window, app| {
                         h_flex()
                             .justify_center()
-                            .text_color(cx.theme().muted_foreground)
-                            .child("No options available"),
-                    )
+                            .text_color(app.theme().muted_foreground)
+                            .child("No options available")
+                    })
                     .min_w_80(),
             ),
         )

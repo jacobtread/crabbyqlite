@@ -35,6 +35,7 @@ impl SqlEditor {
         cx: &mut App,
         default_value: SharedString,
         immutable: bool,
+        submit_on_enter: bool,
         database: Entity<AsyncResource<AnySharedDatabase>>,
     ) -> Entity<Self> {
         cx.new(|cx| {
@@ -68,6 +69,7 @@ impl SqlEditor {
                         .soft_wrap(true)
                         .rows(6)
                         .default_value(default_value)
+                        .submit_on_enter(submit_on_enter)
                 }),
                 immutable,
             }

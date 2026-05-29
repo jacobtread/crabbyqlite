@@ -142,8 +142,14 @@ impl RenderOnce for TableListItem {
                                     &options,
                                 );
 
-                                let editor =
-                                    SqlEditor::new(window, cx, formatted.into(), true, database);
+                                let editor = SqlEditor::new(
+                                    window,
+                                    cx,
+                                    formatted.into(),
+                                    true,
+                                    false,
+                                    database,
+                                );
 
                                 div()
                                     //

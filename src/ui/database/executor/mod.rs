@@ -8,7 +8,8 @@ use crate::{
 };
 use anyhow::Context;
 use gpui::{
-    App, AppContext, Entity, IntoElement, ParentElement, Render, SharedString, Styled, Window, div,
+    App, AppContext, Entity, IntoElement, KeyDownEvent, ParentElement, Render, SharedString,
+    Styled, Window, div,
 };
 use gpui_component::{
     Sizable, StyledExt,
@@ -78,7 +79,7 @@ impl DatabaseSqlExecutor {
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
         let database = cx.database();
 
-        let editor = SqlEditor::new(window, cx, "".into(), false, database);
+        let editor = SqlEditor::new(window, cx, "".into(), false, true, database);
 
         cx.new(|cx| {
             let results: Entity<AsyncResource<DatabaseQueryResult>> = AsyncResource::new(cx);
@@ -109,11 +110,18 @@ impl DatabaseSqlExecutor {
             cx.subscribe_in(
                 &editor_input_state,
                 window,
-                |view, _state, event, _window, cx| {
-                    if let InputEvent::PressEnter { secondary } = event
-                        && *secondary
-                    {
-                        view.perform_current_query(cx);
+                |view, state, event, window, cx| {
+                    if let InputEvent::PressEnter { secondary, shift } = event {
+                        if *secondary {
+                            view.perform_current_query(cx);
+                        }
+                        // Since we enable the submit on enter behavior in order to make CTRL + ENTER not
+                        // make a new line we need to mick the new line behavior when shift isn't held
+                        else if !shift {
+                            state.update(cx, |state, cx| {
+                                state.insert("\n", window, cx);
+                            });
+                        }
                     }
                 },
             )
@@ -171,7 +179,7 @@ impl DatabaseSqlExecutor {
 impl Render for DatabaseSqlExecutor {
     fn render(
         &mut self,
-        _window: &mut gpui::Window,
+        window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         div().size_full().child(
