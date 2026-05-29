@@ -48,6 +48,9 @@ tokio-rusqlite = { version = "0.7.0", features = ["bundled-sqlcipher-vendored-op
 itertools = "0.14.0"
 
 
+[build-dependencies]
+winres = "0.1.12"
+
 [dev-dependencies]
 gpui-component = { version = "0.5.1", features = [
   "inspector",
