@@ -1,3 +1,7 @@
+<h1>
+  <img src="docs/images/logo-v2-light.svg" width="128" height="128">
+</h1>
+
 # Crabbyqlite
 
 > WIP Rust based SQLite database browser

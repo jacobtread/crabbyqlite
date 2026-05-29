@@ -6,6 +6,9 @@ pub enum CustomIconName {
     Cable,
     Database,
     Box,
+    LogoDark,
+    LogoLight,
+    LogoLightPng,
 }
 
 impl CustomIconName {
@@ -21,6 +24,9 @@ impl IconNamed for CustomIconName {
             Self::Cable => "icons/cable.svg",
             Self::Database => "icons/database.svg",
             Self::Box => "icons/box.svg",
+            Self::LogoDark => "icons/logo-dark.svg",
+            Self::LogoLight => "icons/logo-light-64x64.svg",
+            Self::LogoLightPng => "icons/logo-light-64x64.png",
         }
         .into()
     }

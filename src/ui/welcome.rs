@@ -1,3 +1,4 @@
+use crate::ui::icons::CustomIconName;
 use crate::ui::{
     actions::{
         new_database::NewDatabase, new_memory_database::NewMemoryDatabase,
@@ -7,9 +8,10 @@ use crate::ui::{
 };
 use gpui::{
     Action, App, Context, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, img,
     prelude::FluentBuilder, px,
 };
+use gpui::{StyledImage, StyledText, rems};
 use gpui_component::{
     ActiveTheme, Colorize, Icon, IconName, StyledExt,
     button::{Button, ButtonVariants},
@@ -17,6 +19,7 @@ use gpui_component::{
     label::Label,
     menu::{DropdownMenu, PopupMenu},
 };
+use gpui_component::{IconNamed, v_flex};
 
 #[derive(IntoElement)]
 pub struct WelcomeView;
@@ -26,21 +29,47 @@ impl RenderOnce for WelcomeView {
         div()
             .h_full()
             .v_flex()
-            .gap_2()
+            .gap_4()
             .items_center()
             .justify_center()
             .child(
                 div()
                     .v_flex()
-                    .gap_4()
+                    .gap_2()
                     .w(px(400.0))
                     .child(
-                        Label::new(ts("welcome-back-to-crabbyqlite"))
-                            .secondary(ts("handy-sqlite-tool")),
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .gap_2()
+                            .child(
+                                img("icons/logo-light.svg")
+                                    .object_fit(gpui::ObjectFit::ScaleDown)
+                                    .w(px(64.))
+                                    .h(px(64.)),
+                            )
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .gap_2()
+                                    .line_height(rems(1.25))
+                                    .child(
+                                        div()
+                                            .child(ts("welcome-back-to-crabbyqlite"))
+                                            .text_color(cx.theme().foreground),
+                                    )
+                                    .child(
+                                        div()
+                                            .child(ts("handy-sqlite-tool"))
+                                            .text_color(cx.theme().muted_foreground),
+                                    ),
+                            )
+                            .mb_4(),
                     )
                     .child(
                         div()
                             .v_flex()
+                            .w_full()
                             .gap_2()
                             .child(
                                 div()
