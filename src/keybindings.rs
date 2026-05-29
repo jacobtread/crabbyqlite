@@ -1,6 +1,5 @@
 use gpui::{App, KeyBinding};
 
-#[cfg(not(target_os = "macos"))]
 use crate::ui::actions::new_database::NewDatabase;
 use crate::ui::actions::open_file::OpenFile;
 
