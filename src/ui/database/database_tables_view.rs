@@ -1,22 +1,21 @@
-use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, Window, div};
-use gpui_component::{alert::Alert, spinner::Spinner};
-
 use crate::{
     database::DatabaseTable,
     state::{async_resource::AsyncResource, database_tables::database_tables_resource},
-    ui::{database::tables::DatabaseTablesTreeView, translated::ts},
+    ui::{database::tables::tree::DatabaseTablesTreeView, translated::ts},
 };
+use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, div};
+use gpui_component::{alert::Alert, spinner::Spinner};
 
+/// View for showing the tables available in the current database
 pub struct DatabaseTablesView {
     /// Currently loaded set of database tables
     tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
-
     tree: Entity<DatabaseTablesTreeView>,
 }
 
 impl DatabaseTablesView {
-    pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
-        let tree = DatabaseTablesTreeView::new(window, cx);
+    pub fn new(cx: &mut App) -> Entity<Self> {
+        let tree = DatabaseTablesTreeView::new(cx);
 
         cx.new(|cx| {
             let tables = database_tables_resource(cx);

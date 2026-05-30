@@ -38,7 +38,7 @@ impl DatabaseView {
 
             DatabaseView {
                 active_tab: 0,
-                tables_view: DatabaseTablesView::new(window, cx),
+                tables_view: DatabaseTablesView::new(cx),
                 executor: DatabaseSqlExecutor::new(window, cx),
                 browse_view: DatabaseBrowseDataView::new(window, cx),
                 database,
