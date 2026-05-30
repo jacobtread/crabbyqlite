@@ -1,3 +1,8 @@
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions),),
+    windows_subsystem = "windows"
+)]
+
 use gpui::*;
 use gpui_component::{Root, StyledExt, Theme, ThemeMode, TitleBar};
 use gpui_component_assets::Assets;
