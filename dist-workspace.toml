@@ -20,3 +20,5 @@ publish-jobs = ["homebrew"]
 # Whether to install an updater program
 install-updater = true
 github-build-setup = "../build-setup.yml"
+# Skip checking whether the specified configuration files are up to date
+allow-dirty = ["msi"]
