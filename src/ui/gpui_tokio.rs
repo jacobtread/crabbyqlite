@@ -64,6 +64,7 @@ impl Tokio {
 
     /// Spawns the given future on Tokio's thread pool, and returns it via a GPUI task
     /// Note that the Tokio task will be cancelled if the GPUI task is dropped
+    #[allow(unused)]
     pub fn spawn_result<C, Fut, R>(cx: &C, f: Fut) -> Task<anyhow::Result<R>>
     where
         C: AppContext,

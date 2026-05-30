@@ -1,4 +1,3 @@
-use crate::ui::icons::CustomIconName;
 use crate::ui::{
     actions::{
         new_database::NewDatabase, new_memory_database::NewMemoryDatabase,
@@ -11,15 +10,13 @@ use gpui::{
     RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, img,
     prelude::FluentBuilder, px,
 };
-use gpui::{StyledImage, StyledText, rems};
+use gpui::{StyledImage, rems};
 use gpui_component::{
     ActiveTheme, Colorize, Icon, IconName, StyledExt,
     button::{Button, ButtonVariants},
     kbd::Kbd,
-    label::Label,
     menu::{DropdownMenu, PopupMenu},
 };
-use gpui_component::{IconNamed, v_flex};
 
 #[derive(IntoElement)]
 pub struct WelcomeView;

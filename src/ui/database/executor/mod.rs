@@ -8,8 +8,7 @@ use crate::{
 };
 use anyhow::Context;
 use gpui::{
-    App, AppContext, Entity, IntoElement, KeyDownEvent, ParentElement, Render, SharedString,
-    Styled, Window, div,
+    App, AppContext, Entity, IntoElement, ParentElement, Render, SharedString, Styled, Window, div,
 };
 use gpui_component::{
     Sizable, StyledExt,
@@ -179,7 +178,7 @@ impl DatabaseSqlExecutor {
 impl Render for DatabaseSqlExecutor {
     fn render(
         &mut self,
-        window: &mut gpui::Window,
+        _window: &mut gpui::Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         div().size_full().child(
