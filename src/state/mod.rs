@@ -1,4 +1,4 @@
-use gpui::{App, Entity, Global};
+use gpui::{App, Entity, EventEmitter, Global, SharedString};
 
 use crate::{database::AnySharedDatabase, state::async_resource::AsyncResource};
 
@@ -38,3 +38,12 @@ impl AppStateExt for App {
         }
     }
 }
+
+/// Event emitted when the sql query executor performs a query
+#[derive(Clone)]
+pub struct QueryExecutedEvent {
+    #[allow(unused)]
+    pub query: SharedString,
+}
+
+impl EventEmitter<QueryExecutedEvent> for AsyncResource<AnySharedDatabase> {}

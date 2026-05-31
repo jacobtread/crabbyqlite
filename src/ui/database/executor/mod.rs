@@ -1,7 +1,7 @@
 use crate::{
     database::{DatabaseQueryResult, DatabaseRow},
     state::{
-        AppStateExt,
+        AppStateExt, QueryExecutedEvent,
         async_resource::{AsyncResource, AsyncResourceEntityExt},
     },
     ui::{sql_editor::SqlEditor, translated::ts},
@@ -161,10 +161,18 @@ impl DatabaseSqlExecutor {
     }
 
     fn perform_query(&mut self, cx: &mut gpui::Context<'_, Self>, query: SharedString) {
+        let database_entity = cx.database();
         let database = match cx.current_database() {
             Some(value) => value,
             None => return,
         };
+
+        // Notify our listeners that we are executing a query
+        database_entity.update(cx, |_, cx| {
+            cx.emit(QueryExecutedEvent {
+                query: query.clone(),
+            });
+        });
 
         self.results.load(cx, async move || {
             database

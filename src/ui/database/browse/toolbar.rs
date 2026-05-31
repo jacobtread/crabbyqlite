@@ -34,10 +34,16 @@ impl DatabaseBrowseDataViewToolbar {
         cx: &mut App,
     ) -> Option<String> {
         self.table_select_state().update(cx, |this, cx| {
+            let existing_value_is_current = this
+                .selected_value()
+                .is_some_and(|value| tables.contains(value));
+
             this.set_items(SearchableVec::new(tables), window, cx);
 
             // Current selection is still valid
-            if let Some(value) = this.selected_value() {
+            if let Some(value) = this.selected_value()
+                && existing_value_is_current
+            {
                 return Some(value.clone());
             }
 
