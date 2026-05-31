@@ -4,21 +4,21 @@
 )]
 
 use gpui::*;
-use gpui_component::{Root, StyledExt, Theme, ThemeMode, TitleBar};
+use gpui_component::{Root, Theme, ThemeMode, TitleBar};
 use gpui_component_assets::Assets;
 
 use crate::{
+    assets::{CombinedAssetSource, CustomAssets},
     keybindings::init_keybindings,
-    state::{AppState, AppStateExt, async_resource::AsyncResource},
+    state::AppState,
     ui::{
-        actions::register_actions,
-        assets::{CombinedAssetSource, CustomAssets},
-        components::organisms::{sql_editor::init_sql_editor, titlebar::AppTitleBar},
-        menus::register_app_menus,
-        views::{database::DatabaseView, welcome::WelcomeView},
+        actions::register_actions, app::MainApp,
+        components::organisms::sql_editor::init_sql_editor, menus::register_app_menus,
     },
+    utils::gpui_tokio::init_tokio,
 };
 
+mod assets;
 mod database;
 mod keybindings;
 mod logging;
@@ -29,28 +29,20 @@ mod utils;
 
 rust_i18n::i18n!("locales");
 
-pub struct MainApp {
-    app_title_bar: Entity<AppTitleBar>,
-    database_view: Entity<DatabaseView>,
+fn init(cx: &mut App) {
+    gpui_component::init(cx);
+    init_theme(cx);
+    init_keybindings(cx);
+    init_tokio(cx);
 }
 
-impl Render for MainApp {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let dialog_layer = Root::render_dialog_layer(window, cx);
-        let notification_layer = Root::render_notification_layer(window, cx);
-        let database = cx.database();
+fn init_theme(cx: &mut App) {
+    // Set the theme to dark
+    Theme::change(ThemeMode::Dark, None, cx);
 
-        div()
-            .v_flex()
-            .size_full()
-            .child(self.app_title_bar.clone())
-            .child(div().size_full().child(match database.read(cx) {
-                AsyncResource::Idle => WelcomeView.into_any_element(),
-                _ => self.database_view.clone().into_any_element(),
-            }))
-            .children(notification_layer)
-            .children(dialog_layer)
-    }
+    // Move the notifications to the bottom right
+    let theme = Theme::global_mut(cx);
+    theme.notification.placement = Anchor::BottomRight;
 }
 
 fn main() {
@@ -66,32 +58,17 @@ fn main() {
         });
 
     app.run(move |cx| {
-        // This must be called before using any GPUI Component features.
-        gpui_component::init(cx);
+        init(cx);
 
-        // Initialize using dark theme
-        Theme::change(ThemeMode::Dark, None, cx);
-
-        // Move the notifications to the bottom right
-        {
-            let theme = Theme::global_mut(cx);
-            theme.notification.placement = Anchor::BottomRight;
-        }
-
-        init_keybindings(cx);
-
-        ui::gpui_tokio::init(cx);
-
+        // Setup global state
         let app_state = AppState::new(cx);
         cx.set_global(app_state);
 
         // Bring the menu bar to the foreground (so you can see the menu bar)
         cx.activate(true);
 
-        // Register actions
+        // Register actions and menus
         register_actions(cx);
-
-        // Register menu items
         register_app_menus(cx);
 
         let bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
@@ -104,12 +81,7 @@ fn main() {
                     ..Default::default()
                 },
                 |window, cx| {
-                    let view = cx.new(|cx| MainApp {
-                        app_title_bar: AppTitleBar::new(window, cx),
-                        database_view: DatabaseView::new(window, cx),
-                    });
-
-                    // This first level on the window, should be a Root.
+                    let view = MainApp::new(window, cx);
                     cx.new(|cx| Root::new(view, window, cx))
                 },
             )?;

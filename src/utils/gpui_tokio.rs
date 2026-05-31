@@ -9,21 +9,6 @@ pub use tokio::task::JoinError;
 
 use crate::utils::defer::defer;
 
-/// Initializes the Tokio wrapper using a new Tokio runtime with 2 worker threads.
-///
-/// If you need more threads (or access to the runtime outside of GPUI), you can create the runtime
-/// yourself and pass a Handle to `init_from_handle`.
-pub fn init(cx: &mut App) {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        // Since we now have two executors, let's try to keep our footprint small
-        .worker_threads(2)
-        .enable_all()
-        .build()
-        .expect("Failed to initialize Tokio");
-
-    cx.set_global(GlobalTokio::new(runtime));
-}
-
 struct GlobalTokio {
     runtime: tokio::runtime::Runtime,
 }
@@ -36,7 +21,19 @@ impl GlobalTokio {
     }
 }
 
-pub struct Tokio {}
+/// Initializes the Tokio wrapper using a new Tokio runtime with 2 worker threads.
+pub fn init_tokio(cx: &mut App) {
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        // Since we now have two executors, let's try to keep our footprint small
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("Failed to initialize Tokio");
+
+    cx.set_global(GlobalTokio::new(runtime));
+}
+
+pub struct Tokio;
 
 impl Tokio {
     /// Spawns the given future on Tokio's thread pool, and returns it via a GPUI task

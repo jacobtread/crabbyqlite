@@ -6,7 +6,8 @@
     "xsmall",
     "schemars",
     "sqlformat",
-    "rusqlite"
+    "rusqlite",
+    "notnull"
   ],
   "userWords": [
     "\n    \n}",
