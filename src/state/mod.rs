@@ -1,12 +1,18 @@
-use gpui::{App, Entity, EventEmitter, Global, SharedString};
+use gpui::{App, Context, Entity, Global};
 
-use crate::{database::AnySharedDatabase, state::async_resource::AsyncResource};
+use crate::{
+    database::AnySharedDatabase,
+    state::{
+        async_resource::AsyncResource,
+        database::{DatabaseResource, DatabaseResourceExt},
+    },
+};
 
 pub mod async_resource;
-pub mod database_tables;
+pub mod database;
 
 pub struct AppState {
-    pub database: Entity<AsyncResource<AnySharedDatabase>>,
+    pub database: Entity<DatabaseResource>,
 }
 
 impl Global for AppState {}
@@ -14,36 +20,41 @@ impl Global for AppState {}
 impl AppState {
     pub fn new(cx: &mut App) -> Self {
         Self {
-            database: AsyncResource::new(cx),
+            database: DatabaseResource::new(cx),
         }
     }
 }
 
-pub trait AppStateExt {
-    fn database(&self) -> Entity<AsyncResource<AnySharedDatabase>>;
-
-    fn current_database(&self) -> Option<AnySharedDatabase>;
-}
-
-impl AppStateExt for App {
+impl DatabaseResourceExt for App {
     fn database(&self) -> Entity<AsyncResource<AnySharedDatabase>> {
         let app_state = self.global::<AppState>();
-        app_state.database.clone()
+        DatabaseResource::database(&app_state.database, self)
     }
 
-    fn current_database(&self) -> Option<AnySharedDatabase> {
-        match self.database().read(self) {
-            AsyncResource::Loaded(value) => Some(value.clone()),
-            _ => None,
-        }
+    fn database_connection(&self) -> Option<AnySharedDatabase> {
+        let app_state = self.global::<AppState>();
+        DatabaseResource::database_connection(&app_state.database, self)
+    }
+
+    fn database_tables(&self) -> Entity<AsyncResource<Vec<crate::database::DatabaseTable>>> {
+        let app_state = self.global::<AppState>();
+        DatabaseResource::database_tables(&app_state.database, self)
     }
 }
 
-/// Event emitted when the sql query executor performs a query
-#[derive(Clone)]
-pub struct QueryExecutedEvent {
-    #[allow(unused)]
-    pub query: SharedString,
-}
+impl<'a, T> DatabaseResourceExt for Context<'a, T> {
+    fn database(&self) -> Entity<AsyncResource<AnySharedDatabase>> {
+        let app_state = self.global::<AppState>();
+        DatabaseResource::database(&app_state.database, self)
+    }
 
-impl EventEmitter<QueryExecutedEvent> for AsyncResource<AnySharedDatabase> {}
+    fn database_connection(&self) -> Option<AnySharedDatabase> {
+        let app_state = self.global::<AppState>();
+        DatabaseResource::database_connection(&app_state.database, self)
+    }
+
+    fn database_tables(&self) -> Entity<AsyncResource<Vec<crate::database::DatabaseTable>>> {
+        let app_state = self.global::<AppState>();
+        DatabaseResource::database_tables(&app_state.database, self)
+    }
+}

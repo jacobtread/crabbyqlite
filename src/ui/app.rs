@@ -1,5 +1,5 @@
 use crate::{
-    state::{AppStateExt, async_resource::AsyncResource},
+    state::{async_resource::AsyncResource, database::DatabaseResourceExt},
     ui::{
         components::organisms::titlebar::AppTitleBar,
         views::{database::DatabaseView, welcome::WelcomeView},

@@ -10,8 +10,7 @@ use gpui_component::{
 };
 
 use crate::{
-    database::AnySharedDatabase,
-    state::{AppStateExt, async_resource::AsyncResource},
+    state::database::DatabaseResourceExt,
     ui::{actions::close_database::CloseDatabase, components::atoms::i18n::translated::ts},
 };
 
@@ -36,8 +35,8 @@ impl DatabaseStatusLabel {
         cx.new(|cx| {
             let database = cx.database();
 
-            cx.observe(&database, |this: &mut DatabaseStatusLabel, database, cx| {
-                this.update_database_options(&database, cx);
+            cx.observe(&database, |this: &mut DatabaseStatusLabel, _, cx| {
+                this.update_database_options(cx);
             })
             .detach();
 
@@ -47,13 +46,9 @@ impl DatabaseStatusLabel {
         })
     }
 
-    fn update_database_options(
-        &mut self,
-        database_store: &Entity<AsyncResource<AnySharedDatabase>>,
-        cx: &mut Context<'_, Self>,
-    ) {
-        let database = match database_store.read(cx) {
-            AsyncResource::Loaded(value) => value,
+    fn update_database_options(&mut self, cx: &mut Context<'_, Self>) {
+        let database = match cx.database_connection() {
+            Some(value) => value,
             _ => {
                 self.database_options = None;
                 return;

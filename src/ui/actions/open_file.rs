@@ -3,7 +3,7 @@ use crate::{
         AnySharedDatabase,
         sqlite::{SqliteDatabase, SqliteDatabaseOptions},
     },
-    state::{AppStateExt, async_resource::AsyncResourceEntityExt},
+    state::{async_resource::AsyncResourceEntityExt, database::DatabaseResourceExt},
     utils::async_utils::resolve_async_callback_cx,
 };
 use anyhow::Context;

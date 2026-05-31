@@ -1,6 +1,6 @@
 use crate::{
     database::DatabaseTable,
-    state::{async_resource::AsyncResource, database_tables::database_tables_resource},
+    state::{async_resource::AsyncResource, database::DatabaseResourceExt},
     ui::components::{
         atoms::i18n::translated::ts,
         organisms::database::tables_browser::tables_table_tree::DatabaseTablesTreeView,
@@ -21,7 +21,7 @@ impl DatabaseTablesView {
         let tree = DatabaseTablesTreeView::new(cx);
 
         cx.new(|cx| {
-            let tables = database_tables_resource(cx);
+            let tables = cx.database_tables();
 
             cx.observe(&tables, |this: &mut DatabaseTablesView, tables, cx| {
                 let tables_data = match tables.read(cx) {

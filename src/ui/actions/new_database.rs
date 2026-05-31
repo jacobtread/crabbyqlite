@@ -6,8 +6,8 @@ use tokio::fs::File;
 
 use crate::database::AnySharedDatabase;
 use crate::database::sqlite::{SqliteDatabase, SqliteDatabaseOptions};
-use crate::state::AppStateExt;
 use crate::state::async_resource::AsyncResourceEntityExt;
+use crate::state::database::DatabaseResourceExt;
 use crate::utils::async_utils::resolve_async_callback_cx;
 
 actions!(file, [NewDatabase]);

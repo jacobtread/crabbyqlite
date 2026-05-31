@@ -1,6 +1,6 @@
 use crate::{
     database::AnySharedDatabase,
-    state::{AppStateExt, async_resource::AsyncResource},
+    state::{async_resource::AsyncResource, database::DatabaseResourceExt},
     ui::{
         components::atoms::{
             i18n::translated::{t, ts},

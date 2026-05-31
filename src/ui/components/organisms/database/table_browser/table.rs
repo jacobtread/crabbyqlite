@@ -10,7 +10,7 @@ use gpui_component::{
 
 use crate::{
     database::{AnySharedDatabase, DatabaseQueryResult, DatabaseRow, DatabaseTableQuery},
-    state::AppStateExt,
+    state::database::DatabaseResourceExt,
     ui::components::organisms::pagination::Pagination,
 };
 
@@ -138,7 +138,7 @@ impl DatabaseTableBrowser {
 
     /// Load the current table
     fn load_table_page(&mut self, window: &mut Window, cx: &mut Context<'_, Self>) {
-        let database = match cx.current_database() {
+        let database = match cx.database_connection() {
             Some(value) => value,
             None => {
                 self.pagination.count = None;

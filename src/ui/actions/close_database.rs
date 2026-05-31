@@ -1,6 +1,6 @@
 use gpui::{App, actions};
 
-use crate::state::{AppStateExt, async_resource::AsyncResourceEntityExt};
+use crate::state::{async_resource::AsyncResourceEntityExt, database::DatabaseResourceExt};
 
 actions!(file, [CloseDatabase]);
 

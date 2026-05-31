@@ -20,7 +20,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     database::DatabaseTable,
-    state::AppStateExt,
+    state::database::DatabaseResourceExt,
     ui::{
         actions::copy_text::CopyText,
         components::{

@@ -5,7 +5,7 @@ use gpui::{App, actions};
 
 use crate::{
     database::{AnySharedDatabase, sqlite::SqliteDatabase},
-    state::{AppStateExt, async_resource::AsyncResourceEntityExt},
+    state::{async_resource::AsyncResourceEntityExt, database::DatabaseResourceExt},
 };
 
 actions!(file, [NewMemoryDatabase]);
