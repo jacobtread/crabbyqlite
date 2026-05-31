@@ -1,6 +1,11 @@
-use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, Window, div};
+use gpui::{
+    App, AppContext, Context, Entity, ParentElement, Render, Styled, Subscription, Window, div,
+};
 use gpui_component::{
-    ActiveTheme, Icon, StyledExt, alert::Alert, select::SelectEvent, spinner::Spinner,
+    ActiveTheme, Icon, StyledExt,
+    alert::Alert,
+    select::{SearchableVec, SelectEvent, SelectState},
+    spinner::Spinner,
 };
 
 use crate::{
@@ -14,7 +19,7 @@ use crate::{
     },
 };
 
-pub struct DatabaseBrowseDataView {
+pub struct DatabaseBrowseTableView {
     /// Currently loaded set of database tables
     tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
 
@@ -23,9 +28,12 @@ pub struct DatabaseBrowseDataView {
 
     /// Browser for the currently selected table
     browser: Option<Entity<DatabaseTableBrowser>>,
+
+    /// Data subscriptions attached to this view
+    _subscriptions: (Subscription, Subscription),
 }
 
-impl DatabaseBrowseDataView {
+impl DatabaseBrowseTableView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| {
             let tables = cx.database_tables();
@@ -33,56 +41,64 @@ impl DatabaseBrowseDataView {
             let toolbar = DatabaseBrowseDataViewToolbar::new(window, cx);
 
             // Listen to changes in the tables list to update the table selector values and selection
-            cx.observe_in(
-                &tables,
-                window,
-                move |this: &mut DatabaseBrowseDataView, tables, window, cx| {
-                    let tables_data = match tables.read(cx) {
-                        AsyncResource::Loaded(tables) => tables.clone(),
-                        _ => Vec::new(),
-                    };
-
-                    // Collect the table items for the selector
-                    let tables: Vec<String> =
-                        tables_data.iter().map(|value| value.name.clone()).collect();
-
-                    let table = this
-                        .toolbar
-                        .update(cx, |this, cx| this.update_tables(tables, window, cx));
-
-                    this.browser = table.map(|table| DatabaseTableBrowser::new(table, window, cx));
-                },
-            )
-            .detach();
+            let tables_subscription = cx.observe_in(&tables, window, Self::on_tables_changed);
 
             // Listen to changes of the current table to update the browser view
             let table_selector_state = toolbar.read(cx).table_select_state();
-            cx.subscribe_in(
+            let table_selector_subscription = cx.subscribe_in(
                 &table_selector_state,
                 window,
-                move |this, _entity, event, window, cx| match event {
-                    SelectEvent::Confirm(table) => {
-                        if let Some(table) = table {
-                            this.browser =
-                                Some(DatabaseTableBrowser::new(table.clone(), window, cx));
-                        } else {
-                            this.browser = None;
-                        }
-                    }
-                },
-            )
-            .detach();
+                Self::on_table_selection_changed,
+            );
 
             Self {
                 tables,
                 toolbar,
                 browser: None,
+                _subscriptions: (tables_subscription, table_selector_subscription),
             }
         })
     }
+
+    /// Handles changes to the available tables for selection
+    fn on_tables_changed(
+        &mut self,
+        tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let tables_data = match tables.read(cx) {
+            AsyncResource::Loaded(tables) => tables.clone(),
+            _ => Vec::new(),
+        };
+
+        // Collect the table items for the selector
+        let tables: Vec<String> = tables_data.iter().map(|value| value.name.clone()).collect();
+
+        let table = self
+            .toolbar
+            .update(cx, |this, cx| this.update_tables(tables, window, cx));
+
+        self.browser = table.map(|table| DatabaseTableBrowser::new(table, window, cx));
+    }
+
+    /// Handles changes to the currently selected table
+    fn on_table_selection_changed(
+        &mut self,
+        _entity: &Entity<SelectState<SearchableVec<String>>>,
+        event: &SelectEvent<SearchableVec<String>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let SelectEvent::Confirm(table) = event;
+
+        self.browser = table
+            .clone()
+            .map(|table| DatabaseTableBrowser::new(table, window, cx));
+    }
 }
 
-impl Render for DatabaseBrowseDataView {
+impl Render for DatabaseBrowseTableView {
     fn render(
         &mut self,
         _window: &mut gpui::Window,

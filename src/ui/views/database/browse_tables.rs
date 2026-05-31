@@ -6,43 +6,52 @@ use crate::{
         organisms::database::tables_browser::tables_table_tree::DatabaseTablesTreeView,
     },
 };
-use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, div};
+use gpui::{App, AppContext, Context, Entity, ParentElement, Render, Styled, Subscription, div};
 use gpui_component::{alert::Alert, spinner::Spinner};
 
 /// View for showing the tables available in the current database
-pub struct DatabaseTablesView {
-    /// Currently loaded set of database tables
+pub struct DatabaseBrowseTablesView {
     tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
     tree: Entity<DatabaseTablesTreeView>,
+    _subscriptions: (Subscription,),
 }
 
-impl DatabaseTablesView {
+impl DatabaseBrowseTablesView {
     pub fn new(cx: &mut App) -> Entity<Self> {
         let tree = DatabaseTablesTreeView::new(cx);
 
         cx.new(|cx| {
             let tables = cx.database_tables();
+            let tables_subscription = cx.observe(&tables, Self::on_tables_changed);
 
-            cx.observe(&tables, |this: &mut DatabaseTablesView, tables, cx| {
-                let tables_data = match tables.read(cx) {
-                    AsyncResource::Loaded(tables) => tables.clone(),
-                    _ => Vec::new(),
-                };
-
-                tracing::debug!("loaded tables data for display");
-
-                this.tree.update(cx, |this, cx| {
-                    this.set_entries(tables_data, cx);
-                });
-            })
-            .detach();
-
-            Self { tables, tree }
+            Self {
+                tables,
+                tree,
+                _subscriptions: (tables_subscription,),
+            }
         })
+    }
+
+    /// Handles changes to the available tables
+    fn on_tables_changed(
+        &mut self,
+        tables: Entity<AsyncResource<Vec<DatabaseTable>>>,
+        cx: &mut Context<Self>,
+    ) {
+        let tables_data = match tables.read(cx) {
+            AsyncResource::Loaded(tables) => tables.clone(),
+            _ => Vec::new(),
+        };
+
+        tracing::debug!("loaded tables data for display");
+
+        self.tree.update(cx, |this, cx| {
+            this.set_entries(tables_data, cx);
+        });
     }
 }
 
-impl Render for DatabaseTablesView {
+impl Render for DatabaseBrowseTablesView {
     fn render(
         &mut self,
         _window: &mut gpui::Window,

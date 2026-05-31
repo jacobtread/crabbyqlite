@@ -7,12 +7,12 @@ use crate::{
             icons::CustomIconName,
         },
         views::database::{
-            browse_table::DatabaseBrowseDataView, browse_tables::DatabaseTablesView,
-            query_executor::DatabaseSqlExecutor,
+            browse_table::DatabaseBrowseTableView, browse_tables::DatabaseBrowseTablesView,
+            query_executor::DatabaseQueryExecutor,
         },
     },
 };
-use gpui::{App, AppContext, Element, Entity, ParentElement, Render, Styled, Window, div};
+use gpui::{App, AppContext, Context, Element, Entity, ParentElement, Render, Styled, Window, div};
 use gpui_component::{
     ActiveTheme, Icon, StyledExt,
     spinner::Spinner,
@@ -25,9 +25,9 @@ mod query_executor;
 
 pub struct DatabaseView {
     active_tab: usize,
-    tables_view: Entity<DatabaseTablesView>,
-    executor: Entity<DatabaseSqlExecutor>,
-    browse_view: Entity<DatabaseBrowseDataView>,
+    tables_view: Entity<DatabaseBrowseTablesView>,
+    executor: Entity<DatabaseQueryExecutor>,
+    browse_view: Entity<DatabaseBrowseTableView>,
     database: Entity<AsyncResource<AnySharedDatabase>>,
 }
 
@@ -38,12 +38,17 @@ impl DatabaseView {
 
             DatabaseView {
                 active_tab: 0,
-                tables_view: DatabaseTablesView::new(cx),
-                executor: DatabaseSqlExecutor::new(window, cx),
-                browse_view: DatabaseBrowseDataView::new(window, cx),
+                tables_view: DatabaseBrowseTablesView::new(cx),
+                executor: DatabaseQueryExecutor::new(window, cx),
+                browse_view: DatabaseBrowseTableView::new(window, cx),
                 database,
             }
         })
+    }
+
+    fn on_change_tab(&mut self, index: &usize, _window: &mut Window, cx: &mut Context<Self>) {
+        self.active_tab = *index;
+        cx.notify();
     }
 }
 
@@ -79,10 +84,7 @@ impl Render for DatabaseView {
                 .child(
                     TabBar::new("tabs")
                         .selected_index(self.active_tab)
-                        .on_click(cx.listener(|view, index, _, cx| {
-                            view.active_tab = *index;
-                            cx.notify();
-                        }))
+                        .on_click(cx.listener(Self::on_change_tab))
                         .child(Tab::new().label("Database Structure"))
                         .child(Tab::new().label("Browse Data"))
                         .child(Tab::new().label("Edit Pragmas"))

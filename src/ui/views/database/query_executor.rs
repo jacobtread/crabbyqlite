@@ -1,27 +1,28 @@
 use crate::{
-    database::{DatabaseQueryResult, DatabaseRow},
+    database::{AnySharedDatabase, DatabaseQueryResult, DatabaseRow},
     state::{
         async_resource::{AsyncResource, AsyncResourceEntityExt},
         database::{DatabaseResourceExt, connection::QueryExecutedEvent},
     },
     ui::components::{atoms::i18n::translated::ts, organisms::sql_editor::SqlEditor},
 };
-use anyhow::Context;
+use anyhow::Context as AnyhowContext;
 use gpui::{
-    App, AppContext, Entity, IntoElement, ParentElement, Render, SharedString, Styled, Window, div,
+    App, AppContext, ClickEvent, Context, Entity, IntoElement, ParentElement, Render, SharedString,
+    Styled, Subscription, Window, div,
 };
 use gpui_component::{
     Sizable, StyledExt,
     alert::Alert,
     button::Button,
-    input::InputEvent,
+    input::{InputEvent, InputState},
     resizable::v_resizable,
     spinner::Spinner,
     table::{Column, DataTable, TableDelegate, TableState},
 };
 use sqlformat::FormatOptions;
 
-pub struct DatabaseSqlExecutor {
+pub struct DatabaseQueryExecutor {
     /// Query results
     results: Entity<AsyncResource<DatabaseQueryResult>>,
 
@@ -30,6 +31,8 @@ pub struct DatabaseSqlExecutor {
 
     // SQL Editor state
     editor: Entity<SqlEditor>,
+
+    _subscriptions: (Subscription, Subscription, Subscription),
 }
 
 struct ResultsTableDelegate {
@@ -64,7 +67,7 @@ impl TableDelegate for ResultsTableDelegate {
         row_ix: usize,
         col_ix: usize,
         _window: &mut Window,
-        _cx: &mut gpui::Context<TableState<Self>>,
+        _cx: &mut Context<TableState<Self>>,
     ) -> impl IntoElement {
         let row = &self.rows[row_ix];
         let value = row.values.get(col_ix);
@@ -72,7 +75,7 @@ impl TableDelegate for ResultsTableDelegate {
     }
 }
 
-impl DatabaseSqlExecutor {
+impl DatabaseQueryExecutor {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
         let table_delegate = ResultsTableDelegate::new();
         let table_state = cx.new(|cx| TableState::new(table_delegate, window, cx));
@@ -84,61 +87,79 @@ impl DatabaseSqlExecutor {
             let results: Entity<AsyncResource<DatabaseQueryResult>> = AsyncResource::new(cx);
             let database = cx.database();
 
-            // Reset the results resource when the database changes
-            cx.observe(
-                &database,
-                |this: &mut DatabaseSqlExecutor, _database, cx| {
-                    this.results.set_idle(cx);
-                },
-            )
-            .detach();
+            let tables_subscription = cx.observe(&database, Self::on_tables_changed);
 
             // Observe results changes to update the database table
-            cx.observe(&results, |this: &mut DatabaseSqlExecutor, results, cx| {
-                let (rows, columns) = match results.read(cx) {
-                    AsyncResource::Loaded(rows) => (rows.rows.clone(), rows.column_names.clone()),
-                    _ => (Vec::new(), Vec::new()),
-                };
-
-                this.update_result_rows(rows, columns, cx);
-            })
-            .detach();
+            let results_subscription = cx.observe(&results, Self::on_results_changed);
 
             // Handle CTRL + Enter to run the query
             let editor_input_state = editor.read(cx).input_state.clone();
-            cx.subscribe_in(
-                &editor_input_state,
-                window,
-                |view, state, event, window, cx| {
-                    if let InputEvent::PressEnter { secondary, shift } = event {
-                        if *secondary {
-                            view.perform_current_query(cx);
-                        }
-                        // Since we enable the submit on enter behavior in order to make CTRL + ENTER not
-                        // make a new line we need to mick the new line behavior when shift isn't held
-                        else if !shift {
-                            state.update(cx, |state, cx| {
-                                state.insert("\n", window, cx);
-                            });
-                        }
-                    }
-                },
-            )
-            .detach();
+            let editor_input_subscription =
+                cx.subscribe_in(&editor_input_state, window, Self::on_editor_input);
 
             Self {
                 results,
                 table_state,
                 editor,
+                _subscriptions: (
+                    tables_subscription,
+                    results_subscription,
+                    editor_input_subscription,
+                ),
             }
         })
+    }
+
+    /// Handles changes to the database connection
+    fn on_tables_changed(
+        &mut self,
+        _database: Entity<AsyncResource<AnySharedDatabase>>,
+        cx: &mut Context<Self>,
+    ) {
+        // Reset the results resource when the database changes
+        self.results.set_idle(cx);
+    }
+
+    /// Handles changes to the query results
+    fn on_results_changed(
+        &mut self,
+        results: Entity<AsyncResource<DatabaseQueryResult>>,
+        cx: &mut Context<Self>,
+    ) {
+        let (rows, columns) = match results.read(cx) {
+            AsyncResource::Loaded(rows) => (rows.rows.clone(), rows.column_names.clone()),
+            _ => (Vec::new(), Vec::new()),
+        };
+
+        self.update_result_rows(rows, columns, cx);
+    }
+
+    fn on_editor_input(
+        &mut self,
+        state: &Entity<InputState>,
+        event: &InputEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let InputEvent::PressEnter { secondary, shift } = event {
+            if *secondary {
+                self.perform_current_query(cx);
+            }
+            // Since we enable the submit on enter behavior in order to make CTRL + ENTER not
+            // make a new line we need to mick the new line behavior when shift isn't held
+            else if !shift {
+                state.update(cx, |state, cx| {
+                    state.insert("\n", window, cx);
+                });
+            }
+        }
     }
 
     fn update_result_rows(
         &mut self,
         rows: Vec<DatabaseRow>,
         columns: Vec<SharedString>,
-        cx: &mut gpui::Context<'_, Self>,
+        cx: &mut Context<'_, Self>,
     ) {
         self.table_state.update(cx, |this, cx| {
             let delegate = this.delegate_mut();
@@ -154,13 +175,13 @@ impl DatabaseSqlExecutor {
         });
     }
 
-    fn perform_current_query(&mut self, cx: &mut gpui::Context<'_, Self>) {
+    fn perform_current_query(&mut self, cx: &mut Context<'_, Self>) {
         let editor = self.editor.read(cx);
         let query = editor.input_state.read(cx).value();
         self.perform_query(cx, query);
     }
 
-    fn perform_query(&mut self, cx: &mut gpui::Context<'_, Self>, query: SharedString) {
+    fn perform_query(&mut self, cx: &mut Context<'_, Self>, query: SharedString) {
         let database_entity = cx.database_connection_resource();
         let database = match cx.database_connection() {
             Some(value) => value,
@@ -181,14 +202,27 @@ impl DatabaseSqlExecutor {
                 .context("failed to execute query")
         });
     }
+
+    fn on_executor(&mut self, _event: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        self.perform_current_query(cx);
+    }
+
+    fn on_format_sql(&mut self, _event: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
+        let editor = self.editor.read(cx);
+        let input_state = editor.input_state.clone();
+
+        let query = input_state.read(cx).value();
+        let options = FormatOptions::default();
+        let formatted = sqlformat::format(&query, &sqlformat::QueryParams::None, &options);
+
+        input_state.update(cx, move |this, cx| {
+            this.set_value(formatted, window, cx);
+        });
+    }
 }
 
-impl Render for DatabaseSqlExecutor {
-    fn render(
-        &mut self,
-        _window: &mut gpui::Window,
-        cx: &mut gpui::Context<Self>,
-    ) -> impl gpui::IntoElement {
+impl Render for DatabaseQueryExecutor {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl gpui::IntoElement {
         div().size_full().child(
             v_resizable("executor-resizable")
                 .child(
@@ -203,28 +237,14 @@ impl Render for DatabaseSqlExecutor {
                                     Button::new("execute")
                                         .child(ts("execute"))
                                         .small()
-                                        .on_click(cx.listener(|this, _event, _window, cx| {
-                                            this.perform_current_query(cx);
-                                        })),
+                                        .on_click(cx.listener(Self::on_executor)),
                                 )
-                                .child(Button::new("format").child(ts("format")).small().on_click(
-                                    cx.listener(|this, _event, window, cx| {
-                                        let editor = this.editor.read(cx);
-                                        let input_state = editor.input_state.clone();
-
-                                        let query = input_state.read(cx).value();
-                                        let options = FormatOptions::default();
-                                        let formatted = sqlformat::format(
-                                            &query,
-                                            &sqlformat::QueryParams::None,
-                                            &options,
-                                        );
-
-                                        input_state.update(cx, move |this, cx| {
-                                            this.set_value(formatted, window, cx);
-                                        });
-                                    }),
-                                )),
+                                .child(
+                                    Button::new("format")
+                                        .child(ts("format"))
+                                        .small()
+                                        .on_click(cx.listener(Self::on_format_sql)),
+                                ),
                         )
                         .child(self.editor.clone())
                         .into_any_element(),
