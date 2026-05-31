@@ -2,12 +2,14 @@ use crate::{
     database::AnySharedDatabase,
     state::{AppStateExt, async_resource::AsyncResource},
     ui::{
-        database::{
-            browse::DatabaseBrowseDataView, database_tables_view::DatabaseTablesView,
-            executor::DatabaseSqlExecutor,
+        components::atoms::{
+            i18n::translated::{t, ts},
+            icons::CustomIconName,
         },
-        icons::CustomIconName,
-        translated::{t, ts},
+        views::database::{
+            browse_table::DatabaseBrowseDataView, browse_tables::DatabaseTablesView,
+            query_executor::DatabaseSqlExecutor,
+        },
     },
 };
 use gpui::{App, AppContext, Element, Entity, ParentElement, Render, Styled, Window, div};
@@ -17,11 +19,9 @@ use gpui_component::{
     tab::{Tab, TabBar},
 };
 
-mod browse;
-pub mod database_status_label;
-mod database_tables_view;
-mod executor;
-pub mod tables;
+mod browse_table;
+mod browse_tables;
+mod query_executor;
 
 pub struct DatabaseView {
     active_tab: usize,

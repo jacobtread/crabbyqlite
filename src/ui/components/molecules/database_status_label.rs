@@ -12,7 +12,7 @@ use gpui_component::{
 use crate::{
     database::AnySharedDatabase,
     state::{AppStateExt, async_resource::AsyncResource},
-    ui::{actions::close_database::CloseDatabase, translated::ts},
+    ui::{actions::close_database::CloseDatabase, components::atoms::i18n::translated::ts},
 };
 
 pub struct DatabaseStatusLabel {

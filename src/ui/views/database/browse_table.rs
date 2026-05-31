@@ -6,18 +6,13 @@ use gpui_component::{
 use crate::{
     database::DatabaseTable,
     state::{async_resource::AsyncResource, database_tables::database_tables_resource},
-    ui::{
-        database::{
-            browse::table_browser::DatabaseTableBrowser,
-            browse::toolbar::DatabaseBrowseDataViewToolbar,
+    ui::components::{
+        atoms::{i18n::translated::ts, icons::CustomIconName},
+        organisms::database::table_browser::{
+            table::DatabaseTableBrowser, toolbar::DatabaseBrowseDataViewToolbar,
         },
-        icons::CustomIconName,
-        translated::ts,
     },
 };
-
-mod table_browser;
-mod toolbar;
 
 pub struct DatabaseBrowseDataView {
     /// Currently loaded set of database tables

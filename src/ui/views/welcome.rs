@@ -3,14 +3,11 @@ use crate::ui::{
         new_database::NewDatabase, new_memory_database::NewMemoryDatabase,
         open_encrypted_database::OpenFileEncrypted, open_file::OpenFile,
     },
-    translated::ts,
-    welcome::welcome_button::WelcomeButton,
+    components::{atoms::i18n::translated::ts, molecules::welcome::welcome_button::WelcomeButton},
 };
 use gpui::{App, FontWeight, IntoElement, ParentElement, RenderOnce, Styled, Window, div, img, px};
 use gpui::{StyledImage, rems};
 use gpui_component::{ActiveTheme, Colorize, Icon, IconName, StyledExt};
-
-pub mod welcome_button;
 
 #[derive(IntoElement)]
 pub struct WelcomeView;

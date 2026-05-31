@@ -11,7 +11,7 @@ use gpui_component::{
 use crate::{
     database::{AnySharedDatabase, DatabaseQueryResult, DatabaseRow, DatabaseTableQuery},
     state::AppStateExt,
-    ui::pagination::Pagination,
+    ui::components::organisms::pagination::Pagination,
 };
 
 /// Component for browsing the contents of a table

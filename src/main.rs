@@ -13,11 +13,9 @@ use crate::{
     ui::{
         actions::register_actions,
         assets::{CombinedAssetSource, CustomAssets},
-        database::DatabaseView,
+        components::organisms::{sql_editor::init_sql_editor, titlebar::AppTitleBar},
         menus::register_app_menus,
-        sql_editor::init_sql_editor,
-        titlebar::AppTitleBar,
-        welcome::WelcomeView,
+        views::{database::DatabaseView, welcome::WelcomeView},
     },
 };
 

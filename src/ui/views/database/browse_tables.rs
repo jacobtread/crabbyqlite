@@ -1,7 +1,10 @@
 use crate::{
     database::DatabaseTable,
     state::{async_resource::AsyncResource, database_tables::database_tables_resource},
-    ui::{database::tables::tree::DatabaseTablesTreeView, translated::ts},
+    ui::components::{
+        atoms::i18n::translated::ts,
+        organisms::database::tables_browser::tables_table_tree::DatabaseTablesTreeView,
+    },
 };
 use gpui::{App, AppContext, Entity, ParentElement, Render, Styled, div};
 use gpui_component::{alert::Alert, spinner::Spinner};

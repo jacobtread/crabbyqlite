@@ -14,8 +14,9 @@ use crate::ui::{
         new_database::NewDatabase, new_memory_database::NewMemoryDatabase,
         open_encrypted_database::OpenFileEncrypted, open_file::OpenFile,
     },
-    database::database_status_label::DatabaseStatusLabel,
-    translated::ts,
+    components::{
+        atoms::i18n::translated::ts, molecules::database_status_label::DatabaseStatusLabel,
+    },
 };
 
 pub struct AppTitleBar {

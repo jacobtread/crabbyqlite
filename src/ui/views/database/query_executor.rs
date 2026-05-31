@@ -4,7 +4,7 @@ use crate::{
         AppStateExt, QueryExecutedEvent,
         async_resource::{AsyncResource, AsyncResourceEntityExt},
     },
-    ui::{sql_editor::SqlEditor, translated::ts},
+    ui::components::{atoms::i18n::translated::ts, organisms::sql_editor::SqlEditor},
 };
 use anyhow::Context;
 use gpui::{

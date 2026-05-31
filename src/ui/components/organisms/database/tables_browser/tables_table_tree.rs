@@ -22,7 +22,11 @@ use crate::{
     database::DatabaseTable,
     state::AppStateExt,
     ui::{
-        actions::copy_text::CopyText, icons::CustomIconName, sql_editor::SqlEditor, translated::ts,
+        actions::copy_text::CopyText,
+        components::{
+            atoms::{i18n::translated::ts, icons::CustomIconName},
+            organisms::sql_editor::SqlEditor,
+        },
     },
 };
 
