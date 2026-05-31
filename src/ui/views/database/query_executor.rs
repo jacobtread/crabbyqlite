@@ -2,7 +2,7 @@ use crate::{
     database::{DatabaseQueryResult, DatabaseRow},
     state::{
         async_resource::{AsyncResource, AsyncResourceEntityExt},
-        database::{DatabaseResourceExt, QueryExecutedEvent},
+        database::{DatabaseResourceExt, connection::QueryExecutedEvent},
     },
     ui::components::{atoms::i18n::translated::ts, organisms::sql_editor::SqlEditor},
 };
@@ -161,7 +161,7 @@ impl DatabaseSqlExecutor {
     }
 
     fn perform_query(&mut self, cx: &mut gpui::Context<'_, Self>, query: SharedString) {
-        let database_entity = cx.database();
+        let database_entity = cx.database_connection_resource();
         let database = match cx.database_connection() {
             Some(value) => value,
             None => return,
