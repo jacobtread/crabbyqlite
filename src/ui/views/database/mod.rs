@@ -12,7 +12,7 @@ use crate::{
         },
     },
 };
-use gpui::{App, AppContext, Context, Element, Entity, ParentElement, Render, Styled, Window, div};
+use gpui::{App, AppContext, Context, Entity, ParentElement, Render, Styled, Window, div};
 use gpui_component::{
     ActiveTheme, Icon, StyledExt,
     spinner::Spinner,
@@ -91,11 +91,11 @@ impl Render for DatabaseView {
                         .child(Tab::new().label("Execute SQL")),
                 )
                 .child(match self.active_tab {
-                    0 => div().size_full().child(self.tables_view.clone()).into_any(),
-                    1 => div().size_full().child(self.browse_view.clone()).into_any(),
-                    2 => div().child("Edit Pragmas is not available yet").into_any(),
-                    3 => div().size_full().child(self.executor.clone()).into_any(),
-                    _ => div().into_any(),
+                    0 => div().size_full().child(self.tables_view.clone()),
+                    1 => div().size_full().child(self.browse_view.clone()),
+                    2 => div().child("Edit Pragmas is not available yet"),
+                    3 => div().size_full().child(self.executor.clone()),
+                    _ => div(),
                 }),
             AsyncResource::Error(error) => div().child("TODO: Error message").child(error.clone()),
         }
