@@ -10,11 +10,9 @@ use gpui_component_assets::Assets;
 use crate::{
     assets::{CombinedAssetSource, CustomAssets},
     keybindings::init_keybindings,
+    lsp::init_sql_language,
     state::AppState,
-    ui::{
-        actions::register_actions, app::MainApp,
-        components::organisms::sql_editor::init_sql_editor, menus::register_app_menus,
-    },
+    ui::{actions::register_actions, app::MainApp, menus::register_app_menus},
     utils::gpui_tokio::init_tokio,
 };
 
@@ -48,7 +46,7 @@ fn init_theme(cx: &mut App) {
 fn main() {
     logging::init_logging();
 
-    init_sql_editor();
+    init_sql_language();
 
     let app = gpui_platform::application()
         //

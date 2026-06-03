@@ -1,27 +1,10 @@
 use gpui::{App, AppContext, Entity, IntoElement, Render, SharedString, Styled, Window};
-use gpui_component::highlighter::{LanguageConfig, LanguageRegistry};
 use gpui_component::input::{Input, InputState};
 
 use crate::database::AnySharedDatabase;
 use crate::lsp::SqlLsp;
 use crate::lsp::create_sql_lsp;
 use crate::state::async_resource::AsyncResource;
-
-fn create_sql_language_config() -> LanguageConfig {
-    LanguageConfig {
-        name: "SQL".into(),
-        language: tree_sitter_sequel::LANGUAGE.into(),
-        injection_languages: vec![],
-        highlights: tree_sitter_sequel::HIGHLIGHTS_QUERY.into(),
-        injections: "".into(),
-        locals: "".into(),
-    }
-}
-
-/// Initialize the sql editor (Add the global SQL language)
-pub fn init_sql_editor() {
-    LanguageRegistry::singleton().register("sql", &create_sql_language_config());
-}
 
 /// Text editor using the SQL language
 pub struct SqlEditor {
