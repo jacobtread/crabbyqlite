@@ -21,6 +21,7 @@ use gpui_component::{
 
 mod browse_table;
 mod browse_tables;
+mod edit_pragmas;
 mod query_executor;
 
 pub struct DatabaseView {
