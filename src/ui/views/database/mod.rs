@@ -8,7 +8,7 @@ use crate::{
         },
         views::database::{
             browse_table::DatabaseBrowseTableView, browse_tables::DatabaseBrowseTablesView,
-            query_executor::DatabaseQueryExecutor,
+            edit_pragmas::EditPragmasView, query_executor::DatabaseQueryExecutor,
         },
     },
 };
@@ -30,6 +30,7 @@ pub struct DatabaseView {
     executor: Entity<DatabaseQueryExecutor>,
     browse_view: Entity<DatabaseBrowseTableView>,
     database: Entity<AsyncResource<AnySharedDatabase>>,
+    pragmas_view: Entity<EditPragmasView>,
 }
 
 impl DatabaseView {
@@ -42,6 +43,7 @@ impl DatabaseView {
                 tables_view: DatabaseBrowseTablesView::new(cx),
                 executor: DatabaseQueryExecutor::new(window, cx),
                 browse_view: DatabaseBrowseTableView::new(window, cx),
+                pragmas_view: EditPragmasView::new(window, cx),
                 database,
             }
         })
@@ -94,7 +96,7 @@ impl Render for DatabaseView {
                 .child(match self.active_tab {
                     0 => div().size_full().child(self.tables_view.clone()),
                     1 => div().size_full().child(self.browse_view.clone()),
-                    2 => div().child("Edit Pragmas is not available yet"),
+                    2 => div().size_full().child(self.pragmas_view.clone()),
                     3 => div().size_full().child(self.executor.clone()),
                     _ => div(),
                 }),

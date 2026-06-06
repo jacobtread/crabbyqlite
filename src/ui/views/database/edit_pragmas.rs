@@ -1,7 +1,24 @@
-use gpui::{App, AppContext, Context, Entity, IntoElement, Render, Window, div};
-use gpui_component::select::{SearchableVec, SelectState};
+use std::{collections::HashMap, rc::Rc};
 
-pub struct EditPragmasView {}
+use gpui::{
+    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div,
+};
+use gpui_component::{
+    StyledExt,
+    input::{Input, InputState},
+    scroll::ScrollableElement,
+    select::{SearchableVec, Select, SelectState},
+    setting::{SettingField, SettingGroup, SettingItem},
+    switch::Switch,
+};
+use parking_lot::Mutex;
+
+pub struct EditPragmasView {
+    /// States for each of the pragma values, shared as the values
+    /// must be accessible from a database task which updates the
+    /// current values
+    states: Rc<Mutex<HashMap<&'static str, PragmaState>>>,
+}
 
 pub struct PragmaDefinition {
     name: &'static str,
@@ -272,25 +289,152 @@ enum PragmaType {
     Text,
 }
 
+struct PragmaStateEnum {
+    state: Entity<SelectState<SearchableVec<String>>>,
+}
+
+struct PragmaStateBoolean {
+    value: bool,
+}
+
+struct PragmaStateInteger {
+    state: Entity<InputState>,
+}
+
+struct PragmaStateText {
+    state: Entity<InputState>,
+}
+
 enum PragmaState {
-    /// Select backed state
-    Enum {
-        select: SelectState<SearchableVec<String>>,
-    },
-    /// Boolean backed state
-    Boolean { value: bool },
+    Enum(PragmaStateEnum),
+    Boolean(PragmaStateBoolean),
+    Integer(PragmaStateInteger),
+    Text(PragmaStateText),
 }
 
 impl EditPragmasView {
     pub fn new(window: &mut Window, cx: &mut App) -> Entity<Self> {
-        cx.new(|cx| Self {})
+        cx.new(|cx| {
+            let mut states = HashMap::new();
+
+            for definition in PRAGMA_DEFINITIONS {
+                let state = match &definition.ty {
+                    PragmaType::Enum { values } => {
+                        let state = cx.new(|cx| {
+                            SelectState::new(
+                                SearchableVec::<String>::new(
+                                    values
+                                        .iter()
+                                        .map(|value| value.to_string())
+                                        .collect::<Vec<_>>(),
+                                ),
+                                None,
+                                window,
+                                cx,
+                            )
+                        });
+
+                        PragmaState::Enum(PragmaStateEnum { state })
+                    }
+                    PragmaType::Boolean => {
+                        PragmaState::Boolean(PragmaStateBoolean { value: false })
+                    }
+                    PragmaType::Integer => PragmaState::Integer(PragmaStateInteger {
+                        state: cx.new(|cx| InputState::new(window, cx)),
+                    }),
+                    PragmaType::Text => PragmaState::Text(PragmaStateText {
+                        state: cx.new(|cx| InputState::new(window, cx)),
+                    }),
+                };
+
+                states.insert(definition.name, state);
+            }
+
+            let states = Rc::new(Mutex::new(states));
+
+            Self { states }
+        })
     }
 
-    fn boolean_pragma_value(cx: &mut Context<EditPragmasView>) {}
+    fn boolean_pragma_value(
+        definition: &PragmaDefinition,
+        state: &PragmaStateBoolean,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div().h_flex().child(definition.name).child("Link").child(
+            Switch::new(definition.name)
+                .checked(state.value)
+                .on_click(|checked, _, _| {
+                    println!("Switch is now: {}", checked);
+                }),
+        )
+    }
+
+    fn enum_pragma_value(
+        definition: &PragmaDefinition,
+        state: &PragmaStateEnum,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .h_flex()
+            .child(definition.name)
+            .child("Link")
+            .child(Select::new(&state.state).placeholder("Select a value..."))
+    }
+
+    fn integer_pragma_value(
+        definition: &PragmaDefinition,
+        state: &PragmaStateInteger,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .h_flex()
+            .child(definition.name)
+            .child("Link")
+            .child(Input::new(&state.state))
+    }
+
+    fn text_pragma_value(
+        definition: &PragmaDefinition,
+        state: &PragmaStateText,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .h_flex()
+            .child(definition.name)
+            .child("Link")
+            .child(Input::new(&state.state))
+    }
 }
 
 impl Render for EditPragmasView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let states = self.states.lock();
+
         div()
+            .v_flex()
+            .gap_2()
+            .size_full()
+            .children(PRAGMA_DEFINITIONS.iter().map(|definition| {
+                let state = states
+                    .get(definition.name)
+                    // Should always be defined
+                    .expect("definition is missing state");
+
+                match state {
+                    PragmaState::Boolean(state) => {
+                        div().child(Self::boolean_pragma_value(definition, state, cx))
+                    }
+                    PragmaState::Enum(state) => {
+                        div().child(Self::enum_pragma_value(definition, state, cx))
+                    }
+                    PragmaState::Integer(state) => {
+                        div().child(Self::integer_pragma_value(definition, state, cx))
+                    }
+                    PragmaState::Text(state) => {
+                        div().child(Self::text_pragma_value(definition, state, cx))
+                    }
+                }
+            }))
     }
 }

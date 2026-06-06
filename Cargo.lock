@@ -1173,6 +1173,7 @@ dependencies = [
  "gpui_platform",
  "itertools 0.14.0",
  "lsp-types",
+ "parking_lot",
  "rust-embed",
  "rust-i18n 3.1.5",
  "schemars",
