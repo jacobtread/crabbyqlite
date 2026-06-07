@@ -12,7 +12,9 @@ use crate::{
         },
     },
 };
-use gpui::{App, AppContext, Context, Entity, ParentElement, Render, Styled, Window, div};
+use gpui::{
+    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div,
+};
 use gpui_component::{
     ActiveTheme, Icon, StyledExt,
     spinner::Spinner,
@@ -83,6 +85,7 @@ impl Render for DatabaseView {
                 .child(Spinner::new()),
             AsyncResource::Loaded(_database) => div()
                 .size_full()
+                .overflow_hidden()
                 .v_flex()
                 .child(
                     TabBar::new("tabs")
@@ -93,13 +96,18 @@ impl Render for DatabaseView {
                         .child(Tab::new().label("Edit Pragmas"))
                         .child(Tab::new().label("Execute SQL")),
                 )
-                .child(match self.active_tab {
-                    0 => div().size_full().child(self.tables_view.clone()),
-                    1 => div().size_full().child(self.browse_view.clone()),
-                    2 => div().size_full().child(self.pragmas_view.clone()),
-                    3 => div().size_full().child(self.executor.clone()),
-                    _ => div(),
-                }),
+                .child(
+                    div()
+                        .flex_auto()
+                        .overflow_hidden()
+                        .child(match self.active_tab {
+                            0 => self.tables_view.clone().into_any_element(),
+                            1 => self.browse_view.clone().into_any_element(),
+                            2 => self.pragmas_view.clone().into_any_element(),
+                            3 => self.executor.clone().into_any_element(),
+                            _ => div().into_any_element(),
+                        }),
+                ),
             AsyncResource::Error(error) => div().child("TODO: Error message").child(error.clone()),
         }
     }

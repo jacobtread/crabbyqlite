@@ -1,14 +1,15 @@
 use std::{collections::HashMap, rc::Rc};
 
 use gpui::{
-    App, AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Window, div,
+    App, AppContext, Context, Div, Entity, IntoElement, ParentElement, Render, ScrollHandle,
+    Styled, Window, div,
 };
 use gpui_component::{
-    StyledExt,
+    ActiveTheme, StyledExt,
+    button::{Button, ButtonVariants},
     input::{Input, InputState},
     scroll::ScrollableElement,
     select::{SearchableVec, Select, SelectState},
-    setting::{SettingField, SettingGroup, SettingItem},
     switch::Switch,
 };
 use parking_lot::Mutex;
@@ -355,86 +356,109 @@ impl EditPragmasView {
             Self { states }
         })
     }
+}
 
-    fn boolean_pragma_value(
-        definition: &PragmaDefinition,
-        state: &PragmaStateBoolean,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div().h_flex().child(definition.name).child("Link").child(
-            Switch::new(definition.name)
-                .checked(state.value)
-                .on_click(|checked, _, _| {
-                    println!("Switch is now: {}", checked);
-                }),
-        )
-    }
+fn boolean_pragma_value(
+    definition: &PragmaDefinition,
+    state: &PragmaStateBoolean,
+    cx: &mut Context<EditPragmasView>,
+) -> Div {
+    div().child(
+        Switch::new(definition.name)
+            .checked(state.value)
+            .on_click(cx.listener(|_this, _checked, _window, _cx| {})),
+    )
+}
 
-    fn enum_pragma_value(
-        definition: &PragmaDefinition,
-        state: &PragmaStateEnum,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .h_flex()
-            .child(definition.name)
-            .child("Link")
-            .child(Select::new(&state.state).placeholder("Select a value..."))
-    }
+fn enum_pragma_value(state: &PragmaStateEnum) -> Div {
+    div()
+        .h_flex()
+        .justify_end()
+        .flex_auto()
+        .child(Select::new(&state.state).placeholder("Select a value..."))
+}
 
-    fn integer_pragma_value(
-        definition: &PragmaDefinition,
-        state: &PragmaStateInteger,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .h_flex()
-            .child(definition.name)
-            .child("Link")
-            .child(Input::new(&state.state))
-    }
+fn integer_pragma_value(state: &PragmaStateInteger) -> Div {
+    div()
+        .h_flex()
+        .justify_end()
+        .flex_auto()
+        .child(Input::new(&state.state).max_w_40().flex_auto())
+}
 
-    fn text_pragma_value(
-        definition: &PragmaDefinition,
-        state: &PragmaStateText,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        div()
-            .h_flex()
-            .child(definition.name)
-            .child("Link")
-            .child(Input::new(&state.state))
-    }
+fn text_pragma_value(state: &PragmaStateText) -> Div {
+    div()
+        .h_flex()
+        .justify_end()
+        .flex_auto()
+        .child(Input::new(&state.state).max_w_40().flex_auto())
+}
+
+fn definition_details(
+    definition: &PragmaDefinition,
+    cx: &mut Context<EditPragmasView>,
+) -> impl IntoElement {
+    div()
+        .flex_auto()
+        .v_flex()
+        .gap_1()
+        .justify_start()
+        .items_start()
+        .child(definition.name)
+        .child(docs_link(definition.name, definition.url, cx))
+}
+
+fn docs_link(
+    id: &'static str,
+    link: &'static str,
+    cx: &mut Context<EditPragmasView>,
+) -> impl IntoElement {
+    Button::new(id)
+        .text_color(cx.theme().muted_foreground)
+        .link()
+        .label("Documentation")
+        .on_click(|_event, _window, cx| {
+            cx.open_url(link);
+        })
+        .w_auto()
 }
 
 impl Render for EditPragmasView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let states = self.states.lock();
 
-        div()
-            .v_flex()
-            .gap_2()
-            .size_full()
-            .children(PRAGMA_DEFINITIONS.iter().map(|definition| {
-                let state = states
-                    .get(definition.name)
-                    // Should always be defined
-                    .expect("definition is missing state");
+        div().size_full().p_4().child(
+            div()
+                .border_1()
+                .border_color(cx.theme().border)
+                .size_full()
+                .child(
+                    div()
+                        .v_flex()
+                        .overflow_y_scrollbar()
+                        .gap_1()
+                        .p_2()
+                        .children(PRAGMA_DEFINITIONS.iter().map(|definition| {
+                            let state = states
+                                .get(definition.name)
+                                // Should always be defined
+                                .expect("definition is missing state");
 
-                match state {
-                    PragmaState::Boolean(state) => {
-                        div().child(Self::boolean_pragma_value(definition, state, cx))
-                    }
-                    PragmaState::Enum(state) => {
-                        div().child(Self::enum_pragma_value(definition, state, cx))
-                    }
-                    PragmaState::Integer(state) => {
-                        div().child(Self::integer_pragma_value(definition, state, cx))
-                    }
-                    PragmaState::Text(state) => {
-                        div().child(Self::text_pragma_value(definition, state, cx))
-                    }
-                }
-            }))
+                            div().px_4().py_2().w_full().child(
+                                div()
+                                    .h_flex()
+                                    .child(definition_details(definition, cx))
+                                    .child(match state {
+                                        PragmaState::Boolean(state) => {
+                                            boolean_pragma_value(definition, state, cx)
+                                        }
+                                        PragmaState::Enum(state) => enum_pragma_value(state),
+                                        PragmaState::Integer(state) => integer_pragma_value(state),
+                                        PragmaState::Text(state) => text_pragma_value(state),
+                                    }),
+                            )
+                        })),
+                ),
+        )
     }
 }

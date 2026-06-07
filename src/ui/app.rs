@@ -34,10 +34,15 @@ impl Render for MainApp {
             .v_flex()
             .size_full()
             .child(self.app_title_bar.clone())
-            .child(div().size_full().child(match database.read(cx) {
-                AsyncResource::Idle => WelcomeView.into_any_element(),
-                _ => self.database_view.clone().into_any_element(),
-            }))
+            .child(
+                div()
+                    .flex_auto()
+                    .overflow_hidden()
+                    .child(match database.read(cx) {
+                        AsyncResource::Idle => WelcomeView.into_any_element(),
+                        _ => self.database_view.clone().into_any_element(),
+                    }),
+            )
             .children(notification_layer)
             .children(dialog_layer)
     }
