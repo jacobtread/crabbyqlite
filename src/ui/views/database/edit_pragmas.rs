@@ -2,10 +2,10 @@ use std::{collections::HashMap, rc::Rc};
 
 use gpui::{
     App, AppContext, AsyncWindowContext, Context, Div, Entity, IntoElement, ParentElement, Render,
-    Styled, Window, div,
+    SharedString, Styled, VisualContext, Window, div,
 };
 use gpui_component::{
-    ActiveTheme, StyledExt,
+    ActiveTheme, IconName, StyledExt,
     button::{Button, ButtonVariants},
     input::{Input, InputState},
     scroll::ScrollableElement,
@@ -17,6 +17,7 @@ use parking_lot::Mutex;
 use crate::{
     database::AnySharedDatabase,
     state::{async_resource::AsyncResource, database::DatabaseResourceExt},
+    ui::components::atoms::icons::CustomIconName,
 };
 
 pub struct EditPragmasView {
@@ -63,11 +64,6 @@ const PRAGMA_DEFINITIONS: &[PragmaDefinition] = &[
         "cache_size",
         "https://www.sqlite.org/pragma.html#cache_size",
         PragmaType::Integer,
-    ),
-    p_definition(
-        "cache_spill",
-        "https://www.sqlite.org/pragma.html#cache_spill",
-        PragmaType::Boolean,
     ),
     p_definition(
         "case_sensitive_like",
@@ -392,68 +388,142 @@ impl EditPragmasView {
         cx: &mut AsyncWindowContext,
     ) {
         for definition in PRAGMA_DEFINITIONS {
-            let sql = format!("PRAGMA {}", definition.name);
-            let mut value = match database.query(&sql).await {
-                Ok(value) => value,
-                Err(error) => {
-                    tracing::error!(
-                        ?error,
-                        name = definition.name,
-                        "unable to retrieve pragma value"
-                    );
-                    continue;
-                }
-            };
-
-            let value = match value.rows.pop().and_then(|mut row| row.values.pop()) {
-                Some(value) => value,
-                None => {
-                    continue;
-                }
-            };
-
-            tracing::debug!("PRAGMA {} = {}", definition.name, value);
-
-            let mut states = states.lock();
-            let state = states.get_mut(definition.name).expect("state should exist");
-
-            match (&definition.ty, state) {
-                (PragmaType::Enum { .. }, PragmaState::Enum(state)) => {
-                    let normalized_value = value.to_uppercase();
-                    // TODO: Handle 0, 1 for true/false
-
-                    _ = state.state.update_in(cx, move |state, window, cx| {
-                        state.set_selected_value(&normalized_value, window, cx);
-                    });
-                }
-                (PragmaType::Boolean, PragmaState::Boolean(state)) => {
-                    state.value = value == "1";
-                }
-                (PragmaType::Integer, PragmaState::Integer(state)) => {
-                    _ = state.state.update_in(cx, move |state, window, cx| {
-                        state.set_value(value, window, cx);
-                    });
-                }
-                (PragmaType::Text, PragmaState::Text(state)) => {
-                    _ = state.state.update_in(cx, move |state, window, cx| {
-                        state.set_value(value, window, cx);
-                    });
-                }
-                _ => break,
-            }
+            Self::load_pragma_state(definition, states.as_ref(), &database, cx).await;
         }
+    }
+
+    async fn load_pragma_state(
+        definition: &PragmaDefinition,
+        states: &Mutex<HashMap<&'static str, PragmaState>>,
+        database: &AnySharedDatabase,
+        cx: &mut AsyncWindowContext,
+    ) {
+        let sql = format!("PRAGMA {}", definition.name);
+        let mut value = match database.query(&sql).await {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::error!(
+                    ?error,
+                    name = definition.name,
+                    "unable to retrieve pragma value"
+                );
+                return;
+            }
+        };
+
+        let value = match value.rows.pop().and_then(|mut row| row.values.pop()) {
+            Some(value) => value,
+            None => {
+                return;
+            }
+        };
+
+        tracing::debug!("PRAGMA {} = {}", definition.name, value);
+        Self::set_pragma_state(definition, &states, value, cx);
+    }
+
+    fn set_pragma_state(
+        definition: &PragmaDefinition,
+        states: &Mutex<HashMap<&'static str, PragmaState>>,
+        value: SharedString,
+        cx: &mut AsyncWindowContext,
+    ) {
+        let mut states = states.lock();
+        let state = states.get_mut(definition.name).expect("state should exist");
+
+        match (&definition.ty, state) {
+            (PragmaType::Enum { .. }, PragmaState::Enum(state)) => {
+                let normalized_value = value.to_uppercase();
+                // TODO: Handle 0, 1 for true/false
+
+                _ = state.state.update_in(cx, move |state, window, cx| {
+                    state.set_selected_value(&normalized_value, window, cx);
+                });
+            }
+            (PragmaType::Boolean, PragmaState::Boolean(state)) => {
+                state.value = value == "1";
+            }
+            (PragmaType::Integer, PragmaState::Integer(state)) => {
+                _ = state.state.update_in(cx, move |state, window, cx| {
+                    state.set_value(value, window, cx);
+                });
+            }
+            (PragmaType::Text, PragmaState::Text(state)) => {
+                _ = state.state.update_in(cx, move |state, window, cx| {
+                    state.set_value(value, window, cx);
+                });
+            }
+            _ => {}
+        }
+    }
+
+    async fn set_pragma_value(
+        database: AnySharedDatabase,
+        definition: &PragmaDefinition,
+        value: &str,
+        states: Rc<Mutex<HashMap<&'static str, PragmaState>>>,
+        cx: &mut AsyncWindowContext,
+    ) {
+        let sql = format!("PRAGMA {} = {}", definition.name, value);
+        let _value = match database.query(&sql).await {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::error!(
+                    ?error,
+                    name = definition.name,
+                    %value,
+                    "unable to set pragma value"
+                );
+                return;
+            }
+        };
+
+        Self::load_pragma_state(definition, states.as_ref(), &database, cx).await;
+    }
+
+    fn update_boolean_pragma(
+        &mut self,
+        definition: &'static PragmaDefinition,
+        value: bool,
+        window: &mut Window,
+        cx: &mut Context<EditPragmasView>,
+    ) {
+        let database = match cx.database_connection() {
+            Some(value) => value,
+            _ => return,
+        };
+
+        let states = self.states.clone();
+
+        cx.spawn_in(window, async move |_this, cx| {
+            tracing::debug!("updating boolean value");
+            Self::set_pragma_value(
+                database,
+                definition,
+                match value {
+                    true => "1",
+                    false => "0",
+                },
+                states,
+                cx,
+            )
+            .await;
+        })
+        .detach();
     }
 }
 
 fn boolean_pragma_value(
-    definition: &PragmaDefinition,
+    definition: &'static PragmaDefinition,
     state: &PragmaStateBoolean,
     cx: &mut Context<EditPragmasView>,
 ) -> Div {
     div().child(
         Switch::new(definition.name)
             .checked(state.value)
-            .on_click(cx.listener(|_this, _checked, _window, _cx| {})),
+            .on_click(cx.listener(move |this, checked, window, cx| {
+                this.update_boolean_pragma(definition, *checked, window, cx);
+            })),
     )
 }
 
@@ -465,24 +535,44 @@ fn enum_pragma_value(state: &PragmaStateEnum) -> Div {
         .child(Select::new(&state.state).placeholder("Select a value..."))
 }
 
-fn integer_pragma_value(state: &PragmaStateInteger) -> Div {
+fn integer_pragma_value(
+    definition: &'static PragmaDefinition,
+    state: &PragmaStateInteger,
+    cx: &mut Context<EditPragmasView>,
+) -> Div {
     div()
         .h_flex()
         .justify_end()
         .flex_auto()
+        .gap_1()
         .child(Input::new(&state.state).max_w_40().flex_auto())
+        .child(
+            Button::new(definition.name)
+                .icon(CustomIconName::Save)
+                .on_click(cx.listener(move |this, event, window, cx| {})),
+        )
 }
 
-fn text_pragma_value(state: &PragmaStateText) -> Div {
+fn text_pragma_value(
+    definition: &'static PragmaDefinition,
+    state: &PragmaStateText,
+    cx: &mut Context<EditPragmasView>,
+) -> Div {
     div()
         .h_flex()
         .justify_end()
         .flex_auto()
+        .gap_1()
         .child(Input::new(&state.state).max_w_40().flex_auto())
+        .child(
+            Button::new(definition.name)
+                .icon(CustomIconName::Save)
+                .on_click(cx.listener(move |this, event, window, cx| {})),
+        )
 }
 
 fn definition_details(
-    definition: &PragmaDefinition,
+    definition: &'static PragmaDefinition,
     cx: &mut Context<EditPragmasView>,
 ) -> impl IntoElement {
     div()
@@ -540,8 +630,12 @@ impl Render for EditPragmasView {
                                             boolean_pragma_value(definition, state, cx)
                                         }
                                         PragmaState::Enum(state) => enum_pragma_value(state),
-                                        PragmaState::Integer(state) => integer_pragma_value(state),
-                                        PragmaState::Text(state) => text_pragma_value(state),
+                                        PragmaState::Integer(state) => {
+                                            integer_pragma_value(definition, state, cx)
+                                        }
+                                        PragmaState::Text(state) => {
+                                            text_pragma_value(definition, state, cx)
+                                        }
                                     }),
                             )
                         })),

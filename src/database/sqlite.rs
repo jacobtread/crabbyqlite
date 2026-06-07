@@ -240,7 +240,7 @@ fn value_to_string(value: ValueRef<'_>) -> String {
                 Err(err) => return format!("Failed to decode Text column: {err}"),
             };
 
-            value.to_owned()
+            format!("{:?}", value)
         }
         ValueRef::Blob(items) => format!("{:?}", items),
     }

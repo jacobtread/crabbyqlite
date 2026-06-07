@@ -9,6 +9,7 @@ pub enum CustomIconName {
     LogoDark,
     LogoLight,
     LogoLightPng,
+    Save,
 }
 
 impl CustomIconName {
@@ -27,6 +28,7 @@ impl IconNamed for CustomIconName {
             Self::LogoDark => "icons/logo-dark.svg",
             Self::LogoLight => "icons/logo-light-64x64.svg",
             Self::LogoLightPng => "icons/logo-light-64x64.png",
+            Self::Save => "icons/save.svg",
         }
         .into()
     }
