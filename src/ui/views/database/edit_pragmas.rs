@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use gpui::{
-    App, AppContext, Context, Div, Entity, IntoElement, ParentElement, Render, ScrollHandle,
+    App, AppContext, AsyncWindowContext, Context, Div, Entity, IntoElement, ParentElement, Render,
     Styled, Window, div,
 };
 use gpui_component::{
@@ -13,6 +13,11 @@ use gpui_component::{
     switch::Switch,
 };
 use parking_lot::Mutex;
+
+use crate::{
+    database::AnySharedDatabase,
+    state::{async_resource::AsyncResource, database::DatabaseResourceExt},
+};
 
 pub struct EditPragmasView {
     /// States for each of the pragma values, shared as the values
@@ -352,9 +357,88 @@ impl EditPragmasView {
             }
 
             let states = Rc::new(Mutex::new(states));
+            let database = cx.database();
+
+            cx.observe_in(&database, window, Self::on_database_change)
+                .detach();
 
             Self { states }
         })
+    }
+
+    /// Handles changes to the database connection
+    fn on_database_change(
+        &mut self,
+        database: Entity<AsyncResource<AnySharedDatabase>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let database = match database.read(cx) {
+            AsyncResource::Loaded(value) => value.clone(),
+            _ => return,
+        };
+
+        let states = self.states.clone();
+
+        cx.spawn_in(window, async |_this, cx| {
+            Self::load_pragma_states(database, states, cx).await;
+        })
+        .detach();
+    }
+
+    async fn load_pragma_states(
+        database: AnySharedDatabase,
+        states: Rc<Mutex<HashMap<&'static str, PragmaState>>>,
+        cx: &mut AsyncWindowContext,
+    ) {
+        for definition in PRAGMA_DEFINITIONS {
+            let sql = format!("PRAGMA {}", definition.name);
+            let mut value = match database.query(&sql).await {
+                Ok(value) => value,
+                Err(error) => {
+                    tracing::error!(
+                        ?error,
+                        name = definition.name,
+                        "unable to retrieve pragma value"
+                    );
+                    continue;
+                }
+            };
+
+            let value = match value.rows.pop().and_then(|mut row| row.values.pop()) {
+                Some(value) => value,
+                None => {
+                    continue;
+                }
+            };
+
+            tracing::debug!("PRAGMA {} = {}", definition.name, value);
+
+            let mut states = states.lock();
+            let state = states.get_mut(definition.name).expect("state should exist");
+
+            match (&definition.ty, state) {
+                (PragmaType::Enum { .. }, PragmaState::Enum(state)) => {
+                    _ = state.state.update_in(cx, move |state, window, cx| {
+                        state.set_selected_value(&value.to_uppercase(), window, cx);
+                    });
+                }
+                (PragmaType::Boolean, PragmaState::Boolean(state)) => {
+                    state.value = value == "1";
+                }
+                (PragmaType::Integer, PragmaState::Integer(state)) => {
+                    _ = state.state.update_in(cx, move |state, window, cx| {
+                        state.set_value(value, window, cx);
+                    });
+                }
+                (PragmaType::Text, PragmaState::Text(state)) => {
+                    _ = state.state.update_in(cx, move |state, window, cx| {
+                        state.set_value(value, window, cx);
+                    });
+                }
+                _ => break,
+            }
+        }
     }
 }
 
