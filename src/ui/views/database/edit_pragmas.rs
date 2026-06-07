@@ -420,14 +420,6 @@ impl EditPragmasView {
             match (&definition.ty, state) {
                 (PragmaType::Enum { .. }, PragmaState::Enum(state)) => {
                     let normalized_value = value.to_uppercase();
-                    let normalized_value = normalized_value
-                        .strip_prefix('"')
-                        .unwrap_or(&normalized_value);
-                    let normalized_value = normalized_value
-                        .strip_suffix('"')
-                        .unwrap_or(normalized_value)
-                        .to_string();
-
                     // TODO: Handle 0, 1 for true/false
 
                     _ = state.state.update_in(cx, move |state, window, cx| {
