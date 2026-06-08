@@ -1,16 +1,15 @@
-use std::{any::Any, path::Path, rc::Rc};
-
-use async_trait::async_trait;
-use gpui::SharedString;
-use itertools::Itertools;
-use tokio_rusqlite::{Connection, OpenFlags, params, rusqlite, types::ValueRef};
-
-use tokio::sync::{Mutex, MutexGuard};
-
 use crate::database::{
     Database, DatabaseOptions, DatabaseQueryResult, DatabaseRow, DatabaseTable,
     DatabaseTableColumn, DatabaseTableQuery,
 };
+use async_trait::async_trait;
+use gpui::SharedString;
+use itertools::Itertools;
+use std::{any::Any, path::Path, rc::Rc};
+use tokio::sync::{Mutex, MutexGuard};
+use tokio_rusqlite::{Connection, OpenFlags, params, rusqlite, types::ValueRef};
+
+pub mod pragma;
 
 pub struct SqliteDatabase {
     connection: Mutex<Connection>,

@@ -51,6 +51,23 @@ pub struct DatabaseTableQuery {
     pub table: String,
 }
 
+pub struct PragmaDefinition {
+    pub name: &'static str,
+    pub url: &'static str,
+    pub ty: PragmaType,
+}
+
+pub enum PragmaType {
+    Enum { values: &'static [&'static str] },
+    Boolean,
+    Integer,
+    Text,
+}
+
+const fn p_definition(name: &'static str, url: &'static str, ty: PragmaType) -> PragmaDefinition {
+    PragmaDefinition { name, url, ty }
+}
+
 pub type AnySharedDatabase = Rc<dyn Database>;
 
 #[async_trait]
